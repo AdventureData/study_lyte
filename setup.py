@@ -7,9 +7,6 @@ from setuptools import setup, find_packages
 with open('README.rst') as readme_file:
     readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
-    history = history_file.read()
-
 requirements = ["pandas > 1.1.0", "pandas< 1.5.0"]
 
 test_requirements = ['pytest>=3', ]
@@ -33,7 +30,7 @@ setup(
     description="Package for doing analysis with Lyte Probe data",
     install_requires=requirements,
     license="GNU General Public License v3",
-    long_description=readme + '\n\n' + history,
+    long_description=readme,
     include_package_data=True,
     keywords='study_lyte',
     name='study_lyte',
