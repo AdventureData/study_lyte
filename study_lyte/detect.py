@@ -69,7 +69,7 @@ def get_acceleration_stop(acceleration, n_points_for_basis=10, threshold=0.1):
     return acceleration_stop
 
 
-def get_nir_surface(ambient, active, n_points_for_basis=10, threshold=0.1):
+def get_nir_surface(ambient, active, n_points_for_basis=1000, threshold=0.1):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,

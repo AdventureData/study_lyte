@@ -44,6 +44,7 @@ def test_get_acceleration_stop(data, n_points_for_basis, threshold, expected):
     ([3000, 3000, 1000, 100], [2500, 2500, 3000, 4000], 1, 0.1, 2),
     # no ambient change ( dark or super cloudy)
     ([100, 100, 100, 100], [1000, 1000, 1000, 2000], 1, 0.1, 3)
+
 ])
 def test_get_nir_surface(ambient, active, n_points_for_basis, threashold, expected):
     amb = np.array(ambient)
