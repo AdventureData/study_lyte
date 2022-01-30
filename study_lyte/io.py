@@ -25,7 +25,8 @@ def read_csv(f: TextIO) -> Union[pd.DataFrame, dict]:
         for i, line in enumerate(fp):
             if '=' in line:
                 k, v = line.split('=')
-                k, v = (c.lower().strip() for c in [k, v])
+                k = k.strip().strip('"')
+                v = v.strip().strip('"')
                 metadata[k] = v
             else:
                 header_position = i

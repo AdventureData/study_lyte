@@ -50,4 +50,3 @@ def test_get_nir_surface(ambient, active, n_points_for_basis, threashold, expect
     act = np.array(active)
     idx = get_nir_surface(amb, act, n_points_for_basis=n_points_for_basis, threshold=threashold)
     assert idx == expected
-    
