@@ -32,4 +32,17 @@ def read_csv(f: TextIO) -> Union[pd.DataFrame, dict]:
                 header_position = i
                 break
         df = pd.read_csv(f, header=header_position)
+        # Drop any columns written with the plain index
+        df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
+
         return df, metadata
+
+def write_csv(df: pd.DataFrame, meta: dict, f:TextIO) -> None:
+    """
+    Write out the results with a header using the dictionary
+    """
+    with open(f, 'w+') as fp:
+        for k,v in meta.items():
+            fp.write(f'{k} = {v}\n')
+
+    df.to_csv(f, mode='a', index=False)

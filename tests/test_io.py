@@ -1,10 +1,11 @@
-from study_lyte.io import read_csv
+from study_lyte.io import read_csv, write_csv
 import pytest
-from os.path import join
-
+from os.path import join, isfile
+import os
+from pandas import DataFrame
 
 @pytest.mark.parametrize("f, expected_columns", [
-    ('hi_res.csv', ['Unnamed: 0', 'Sensor1', 'Sensor2', 'Sensor3', 'acceleration', 'depth']),
+    ('hi_res.csv', ['Sensor1', 'Sensor2', 'Sensor3', 'acceleration', 'depth']),
     ('rad_app.csv', ['SAMPLE', 'SENSOR 1', 'SENSOR 2', 'SENSOR 3', 'SENSOR 4', 'DEPTH'])
 ])
 def test_read_csv_columns(data_dir, f, expected_columns):
@@ -32,3 +33,24 @@ def test_read_csv_meta(data_dir, f, expected_meta):
     """
     df, meta = read_csv(join(data_dir, f))
     assert meta == pytest.approx(expected_meta)
+
+
+@pytest.fixture()
+def out_file():
+    f = 'test_output.csv'
+    yield f
+    if isfile(f):
+        os.remove(f)
+
+def test_write_csv(out_file):
+    """
+    Test the writing of a csv with metadata
+    """
+    meta = {"model":"10"}
+    df = DataFrame({'data':[1,2,3]})
+    write_csv(df, meta, out_file)
+
+    with open(out_file) as fp:
+        txt = ''.join(fp.readlines())
+    print(txt)
+    assert txt == 'model = 10\ndata\n1\n2\n3\n'
