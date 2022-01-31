@@ -14,10 +14,10 @@ Study Lyte
         :target: https://github.com/AdventureData/study_lyte/actions/workflows/build.yml
 
 
-Welcome to Adventure Data python package for doing analysis with data from the Lyte Probe
+Welcome to Adventure Data python package for doing analysis with data from the Lyte Probe.
 The Lyte probe is a smart ski pole designed to measure snow. It measures NIR and Force simulataneously along with
-peripheral sensors. This package aims to provide useful function for scientists doing research with this
-platform.
+peripheral sensors for calculating distance traveled. This package aims to provide useful function for researchers
+using this platform.
 
 * Free software: GNU General Public License v3
 * Documentation: https://study-lyte.readthedocs.io.
@@ -26,5 +26,8 @@ platform.
 Features
 --------
 
-* Read Lyte probe data files
+* Read/Write Lyte probe data files with metadata
 * Functions for detecting start and stop
+* Snow surface detection
+
+
