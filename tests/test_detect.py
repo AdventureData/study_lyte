@@ -49,6 +49,9 @@ def test_get_acceleration_start(data, n_points_for_basis, threshold, expected):
 @pytest.mark.parametrize("data,  n_points_for_basis, threshold, expected", [
     # Test normalization and abs
     ([0.1, -1.5, -1.0], 1, 1.0, 0),
+    # Test a no detection returns the last index
+    ([-1, -1, -1], 1, 10, 2),
+
 ])
 def test_get_acceleration_stop(data, n_points_for_basis, threshold, expected):
     d = np.array(data)
@@ -60,7 +63,7 @@ def test_get_acceleration_stop(data, n_points_for_basis, threshold, expected):
     # Typical bright->dark ambient
     ([3000, 3000, 1000, 100], [2500, 2500, 3000, 4000], 1, 0.1, 2),
     # no ambient change ( dark or super cloudy)
-    ([100, 100, 100, 100], [1000, 1000, 1000, 2000], 1, 0.1, 3)
+    ([100, 100, 100, 100], [1000, 1000, 1000, 2000], 2, 0.1, 3)
 
 ])
 def test_get_nir_surface(ambient, active, n_points_for_basis, threashold, expected):

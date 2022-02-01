@@ -34,6 +34,9 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward')
     # If no results are found, return the first index the series
     if len(ind) == 0:
         event_idx = 0
+        if 'backward' in search_direction:
+            event_idx = len(sig) - event_idx - 1
+
     else:
         event_idx = ind[0][0]
 
