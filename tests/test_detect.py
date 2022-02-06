@@ -51,7 +51,6 @@ def test_get_acceleration_start(data, n_points_for_basis, threshold, expected):
     ([0.1, -1.5, -1.0], 1, 1.0, 0),
     # Test a no detection returns the last index
     ([-1, -1, -1], 1, 10, 2),
-
 ])
 def test_get_acceleration_stop(data, n_points_for_basis, threshold, expected):
     d = np.array(data)

@@ -42,6 +42,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward')
 
     return event_idx
 
+
 def get_normal_neutral_acceleration(acceleration, bias_value):
     """
     Bias adjust the acceleration and then normalize it by the max of the
