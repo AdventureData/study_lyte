@@ -1,4 +1,4 @@
-from numpy import argwhere
+import numpy as np
 
 
 def get_signal_event(signal_series, threshold=0.001, search_direction='forward'):
@@ -21,22 +21,45 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward')
         sig = signal_series
 
     if 'forward' in search_direction:
-        ind = argwhere(sig >= threshold)[0]
+        ind = np.argwhere(sig >= threshold)
 
     # Handle backwards/backward usage
     elif 'backward' in search_direction:
-        ind = argwhere(sig[::-1] >= threshold)[0]
+        ind = np.argwhere(sig[::-1] >= threshold)
         ind = len(sig) - ind - 1
 
     else:
         raise ValueError(f'{search_direction} is not a valid event. Use start or end')
 
-    event_idx = ind[0]
+    # If no results are found, return the first index the series
+    if len(ind) == 0:
+        event_idx = 0
+        if 'backward' in search_direction:
+            event_idx = len(sig) - event_idx - 1
+
+    else:
+        event_idx = ind[0][0]
 
     return event_idx
 
 
-def get_acceleration_start(acceleration, n_points_for_basis=10, threshold=0.1):
+def get_normal_neutral_acceleration(acceleration, bias_value):
+    """
+    Bias adjust the acceleration and then normalize it by the max of the
+    signal
+
+    Args:
+        acceleration: pandas Series numpy array of acceleration data
+        bias_value: Value to use for bias adjusting the data
+    Returns:
+        bias_adj: bias adjusted and absolute value of acceleration
+    """
+    # Bias adjust for gravity and absolute value
+    bias_adj = abs(acceleration - bias_value)
+    return bias_adj
+
+
+def get_acceleration_start(acceleration, n_points_for_basis=200, threshold=0.1):
     """
     Returns the index of the first value that has a relative change
     Args:
@@ -47,8 +70,9 @@ def get_acceleration_start(acceleration, n_points_for_basis=10, threshold=0.1):
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    basis = acceleration[0:n_points_for_basis].mean()
-    acceleration_start = get_signal_event(abs(acceleration / basis), threshold=threshold, search_direction='forward')
+    bias = acceleration[0:n_points_for_basis].mean()
+    accel_norm = get_normal_neutral_acceleration(acceleration, bias)
+    acceleration_start = get_signal_event(accel_norm, threshold=threshold, search_direction='forward')
     return acceleration_start
 
 
@@ -64,12 +88,13 @@ def get_acceleration_stop(acceleration, n_points_for_basis=10, threshold=0.1):
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    basis = acceleration[-1*n_points_for_basis:].mean()
-    acceleration_stop = get_signal_event(abs(acceleration / basis), threshold=threshold, search_direction='backwards')
+    bias = acceleration[-1*n_points_for_basis:].mean()
+    accel_norm = get_normal_neutral_acceleration(acceleration, bias)
+    acceleration_stop = get_signal_event(accel_norm, threshold=threshold, search_direction='backwards')
     return acceleration_stop
 
 
-def get_nir_surface(ambient, active, n_points_for_basis=10, threshold=0.1):
+def get_nir_surface(ambient, active, n_points_for_basis=1000, threshold=0.1):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,

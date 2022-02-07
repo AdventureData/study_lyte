@@ -8,6 +8,7 @@ Welcome to Study Lyte 's documentation!
    readme
    installation
    usage
+   examples
    modules
    contributing
    authors
