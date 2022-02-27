@@ -1,57 +1,54 @@
-import numpy as np
+import pandas as pd
 from scipy.integrate import cumtrapz
 
 
-def get_depth_from_acceleration(acceleration, dt=None, series_time=None,
-                                percent_basis=0.05, return_axis='Y-Axis'):
+def get_depth_from_acceleration(acceleration_df: pd.DataFrame, percent_basis: float = 0.05) -> pd.DataFrame:
     """
-    Use classic linear equations of motion to calculate position from
-    acceleration
-    Assuming the starting velocity is 0 and the starting position is also 0,
-    then calculate the travel
+    Double integrate the acceleration to calcule a depth profile
+    Assumes a starting position and velocity of zero.
 
     Args:
-        acceleration: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis or acceleration
+        acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis in g's
+        percent_basis: fraction of the begining of data to calculate a bias adjustment
+
+    Returns:
+
+    Args:
+        acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis or acceleration
+    Return:
+        position_df: pandas Dataframe containing the same input axes plus magnitude of the result position
     """
-    if series_time is None and 'time' == acceleration.index.name:
-        series_time = acceleration.index
-    elif series_time is None and 'time' in acceleration.columns:
-        series_time = acceleration['time']
+    if acceleration_df.index.name != 'time' and 'time' not in acceleration_df.columns:
+        raise ValueError(f"Acceleration data requires a 'time' column or index to calculate depth!")
+
+    if 'time' in acceleration_df.columns:
+        acceleration_df.set_index('time', inplace=True)
 
     # Auto gather the x,y,z acceleration columns if they're there.
-    acceleration_columns = [c for c in acceleration.columns if 'Axis' in c]
-
-    # If there are no Axis columns use acceleration
-    if not acceleration_columns:
-        # This was use for a long time just as a replacement for the Y-Axis
-        acceleration_columns = ['acceleration']
+    acceleration_columns = [c for c in acceleration_df.columns if 'Axis' in c and 'pos' not in c]
 
     # Convert from g's to m/s2
     g = 9.81
-    acc = acceleration[acceleration_columns] * g
+    acc = acceleration_df[acceleration_columns] * g
 
     # Remove off local gravity
     idx = int(percent_basis * len(acc.index))
-    print(idx)
-    print(acc.iloc[0:idx].mean())
-
     acc = acc - acc.iloc[0:idx].mean()
 
     # Calculate position
     position_vec = {}
     for i, axis in enumerate(acceleration_columns):
-        v = cumtrapz(acceleration[axis], series_time, initial=0)
-        position_vec[axis] = cumtrapz(v, series_time, initial=0)
+        # Integrate acceleration to velocity
+        v = cumtrapz(acc[axis].values, acc.index, initial=0)
+        # Integrate velocity to postion
+        position_vec[axis] = cumtrapz(v, acc.index, initial=0)
 
+    position_df = pd.DataFrame.from_dict(position_vec)
 
     # Calculate the magnitude from all the available components
-    if return_axis == 'magnitude':
-        position = (position_vec['X-Axis']**2 + position_vec['Y-Axis']**2 + position_vec['Z-Axis']**2)**0.5
+    magnitude = (position_vec['X-Axis'] ** 2 +
+                 position_vec['Y-Axis'] ** 2 +
+                 position_vec['Z-Axis'] ** 2) ** 0.5
 
-    elif return_axis in acceleration.columns:
-        position = position_vec[return_axis]
-    else:
-        choices = ', '.join(['X-Axis', 'Y-Axis', 'Z-Axis', 'magnitude'])
-        raise ValueError(f'Invalid {return_axis} column requested, choices are {choices}')
-
-    return position
+    position_df['magnitude'] = magnitude
+    return position_df
