@@ -40,7 +40,7 @@ def read_csv(f: TextIO) -> Union[pd.DataFrame, dict]:
         return df, metadata
 
 
-def write_csv(df: pd.DataFrame, meta: dict, f:str) -> None:
+def write_csv(df: pd.DataFrame, meta: dict, f: str) -> None:
     """
     Write out the results with a header using the dictionary
 
@@ -51,7 +51,12 @@ def write_csv(df: pd.DataFrame, meta: dict, f:str) -> None:
     """
 
     with open(f, 'w+') as fp:
-        for k,v in meta.items():
+        for k, v in meta.items():
             fp.write(f'{k} = {v}\n')
+    # write out time if it is the index
+    if df.index.name == 'time':
+        write_index = True
+    else:
+        write_index = False
 
-    df.to_csv(f, mode='a', index=False)
+    df.to_csv(f, mode='a', index=write_index)
