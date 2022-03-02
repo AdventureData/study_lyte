@@ -1,6 +1,6 @@
 import pandas as pd
 from scipy.integrate import cumtrapz
-
+import numpy as np
 
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame, percent_basis: float = 0.05) -> pd.DataFrame:
     """
@@ -25,7 +25,7 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, percent_basis: fl
         acceleration_df.set_index('time', inplace=True)
 
     # Auto gather the x,y,z acceleration columns if they're there.
-    acceleration_columns = [c for c in acceleration_df.columns if 'Axis' in c and 'pos' not in c]
+    acceleration_columns = [c for c in acceleration_df.columns if 'Axis' in c or 'acceleration' == c]
 
     # Convert from g's to m/s2
     g = 9.81
@@ -45,10 +45,11 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, percent_basis: fl
 
     position_df = pd.DataFrame.from_dict(position_vec)
 
-    # Calculate the magnitude from all the available components
-    magnitude = (position_vec['X-Axis'] ** 2 +
-                 position_vec['Y-Axis'] ** 2 +
-                 position_vec['Z-Axis'] ** 2) ** 0.5
+    # Calculate the magnitude if all the components are available
+    if all([c in ['X-Axis', 'Y-Axis', 'Z-Axis'] for c in acceleration_columns]):
+        position_arr = np.array([position_vec['X-Axis'],
+                                position_vec['Y-Axis'],
+                                position_vec['Z-Axis']])
+        position_df['magnitude'] = np.linalg.norm(position_arr)
 
-    position_df['magnitude'] = magnitude
     return position_df
