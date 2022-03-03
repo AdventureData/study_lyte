@@ -116,3 +116,17 @@ def get_nir_surface(ambient, active, n_points_for_basis=1000, threshold=0.1):
     diff = abs(act_norm - amb_norm)
     surface = get_signal_event(diff, threshold=threshold, search_direction='forward')
     return surface
+
+
+def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
+    """
+    Often the NIR signal shows the stopping point of the probe by repeated data.
+    This looks at the active signal to estimate the stopping point
+    """
+    bias = active[-1*n_points_for_basis:].mean()
+    norm = (active - bias) / active.max()
+    stop = get_signal_event(norm, threshold=threshold, search_direction='backwards')
+    return stop
+
+def get_acc_maximum(acceleration):
+    ind = np.argwhere(acceleration.max())
