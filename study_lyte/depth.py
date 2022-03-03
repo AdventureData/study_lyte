@@ -50,6 +50,6 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, percent_basis: fl
         position_arr = np.array([position_vec['X-Axis'],
                                 position_vec['Y-Axis'],
                                 position_vec['Z-Axis']])
-        position_df['magnitude'] = np.linalg.norm(position_arr)
+        position_df['magnitude'] = np.linalg.norm(position_arr, axis=0)
 
     return position_df
