@@ -1,4 +1,4 @@
-from study_lyte.adjustments import get_directional_mean, get_neutral_bias_at_border
+from study_lyte.adjustments import get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border
 import pytest
 import pandas as pd
 import numpy as np
@@ -34,3 +34,16 @@ def test_get_neutral_bias_at_border(data, fractional_basis, direction, zero_bias
     df = pd.DataFrame({'data': np.array(data)})
     result = get_neutral_bias_at_border(df['data'], fractional_basis=fractional_basis, direction=direction)
     assert result.iloc[zero_bias_idx] == 0
+
+@pytest.mark.parametrize('data, fractional_basis, direction, ideal_norm_index', [
+    # Test the directionality
+    ([1, 1, 2, 2], 0.5, 'forward', 0),
+    ([1, 1, 2, 2], 0.5, 'backward', -1),
+])
+def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_index):
+    """
+    Test getting a dataset normalized by its border where the border values of the data should be one
+    """
+    df = pd.DataFrame({'data': np.array(data)})
+    result = get_normalized_at_border(df['data'], fractional_basis=fractional_basis, direction=direction)
+    assert result.iloc[ideal_norm_index] == 1

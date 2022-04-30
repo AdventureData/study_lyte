@@ -1,4 +1,4 @@
-from study_lyte.depth import get_depth_from_acceleration, get_hybrid_depth, get_average_depth, get_fitted_depth
+from study_lyte.depth import get_depth_from_acceleration, get_average_depth, get_fitted_depth
 from study_lyte.io import read_csv
 import pytest
 from os.path import join

@@ -1,5 +1,8 @@
 import numpy as np
-from .adjustments import get_neutral_bias_at_border
+import pandas as pd
+
+from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
+
 
 def get_signal_event(signal_series, threshold=0.001, search_direction='forward'):
     """
@@ -49,7 +52,7 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     Args:
         acceleration: np.array or pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
-        threshold
+        threshold: relative change to indicate start
 
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
@@ -76,7 +79,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=0.1):
     return acceleration_stop
 
 
-def get_nir_surface(ambient, active, n_points_for_basis=1000, threshold=0.1):
+def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,
@@ -86,15 +89,14 @@ def get_nir_surface(ambient, active, n_points_for_basis=1000, threshold=0.1):
     Args:
         ambient: Numpy Array or pandas Series of the ambient NIR signal
         active: Numpy Array or pandas Series of the active NIR signal
-        n_points_for_basis: Integer Number of points to calculate the mean value used to normalize the signal
+        fractional_basis: Float of begining data to use as the normalization
         threshold: Float threshold value for meeting the snow surface event
 
     Return:
         surface: Integer index of the estimated snow surface
     """
-    amb_norm = ambient / ambient[0:n_points_for_basis].mean()
-    act_norm = active / active[0:n_points_for_basis].mean()
-
+    amb_norm = get_normalized_at_border(ambient, fractional_basis=fractional_basis)
+    act_norm = get_normalized_at_border(active, fractional_basis=fractional_basis)
     diff = abs(act_norm - amb_norm)
     surface = get_signal_event(diff, threshold=threshold, search_direction='forward')
     return surface
