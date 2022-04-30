@@ -3,8 +3,9 @@ import functools
 
 def time_series(func):
     """
-    Decorator to use for functions that bump the state along
-    for the state machine in rummager
+    Decorator to use for functions that require a time index.
+    Checks if time is used as the index or is in the columns. If it
+    is in the column, make it an index.Otherwise throw an error.
     """
 
     @functools.wraps(func)
@@ -19,3 +20,25 @@ def time_series(func):
         return result
 
     return set_time_series
+
+
+def directional(_func=None, *, check='direction'):
+    """
+    Decorator to check if the direction specified is valid, use this to
+    standardize all directions and value checking
+    """
+    def decorator_directional(func):
+        @functools.wraps(func)
+        def check_directionality(*args, **kwargs):
+            if kwargs[check] not in ['forward', 'backward']:
+                raise ValueError(f'{check} = {kwargs[check]} is an invalid direction, use either forward or backward.')
+
+            result = func(*args, **kwargs)
+            return result
+        return check_directionality
+
+    if _func is None:
+        return decorator_directional
+    else:
+        return decorator_directional(_func)
+
