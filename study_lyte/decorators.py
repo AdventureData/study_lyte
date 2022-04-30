@@ -1,5 +1,6 @@
 import functools
 
+
 def time_series(func):
     """
     Decorator to use for functions that bump the state along
