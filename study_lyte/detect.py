@@ -1,9 +1,10 @@
 import numpy as np
-import pandas as pd
 
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
+from .decorators import directional
 
 
+@directional(check='search_direction')
 def get_signal_event(signal_series, threshold=0.001, search_direction='forward'):
     """
     Generic function for detecting relative changes in a given signal.
@@ -26,13 +27,10 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward')
     if 'forward' in search_direction:
         ind = np.argwhere(sig >= threshold)
 
-    # Handle backwards/backward usage
+    # Handle backward/backward usage
     elif 'backward' in search_direction:
         ind = np.argwhere(sig[::-1] >= threshold)
         ind = len(sig) - ind - 1
-
-    else:
-        raise ValueError(f'{search_direction} is not a valid event. Use start or end')
 
     # If no results are found, return the first index the series
     if len(ind) == 0:
@@ -74,8 +72,8 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=0.1):
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    accel_norm = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backwards').abs()
-    acceleration_stop = get_signal_event(accel_norm, threshold=threshold, search_direction='backwards')
+    accel_norm = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backward').abs()
+    acceleration_stop = get_signal_event(accel_norm, threshold=threshold, search_direction='backward')
     return acceleration_stop
 
 
@@ -110,12 +108,8 @@ def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
     bias = active[-1*n_points_for_basis:].min()
     norm = active - bias
     norm = abs(norm / norm.max())
-    stop = get_signal_event(norm, threshold=threshold, search_direction='backwards')
-    # import matplotlib.pyplot as plt
-    # plt.plot(norm)
-    # plt.show()
-    # print(norm[-10*n_points_for_basis:])
-    # print(stop / len(active))
+    stop = get_signal_event(norm, threshold=threshold, search_direction='backward')
+
     return stop
 
 

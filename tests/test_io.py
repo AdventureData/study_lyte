@@ -4,6 +4,7 @@ from os.path import join, isfile
 import os
 from pandas import DataFrame
 
+
 @pytest.mark.parametrize("f, expected_columns", [
     ('hi_res.csv', ['Sensor1', 'Sensor2', 'Sensor3', 'acceleration', 'depth']),
     ('rad_app.csv', ['SAMPLE', 'SENSOR 1', 'SENSOR 2', 'SENSOR 3', 'SENSOR 4', 'DEPTH'])
@@ -42,15 +43,15 @@ def out_file():
     if isfile(f):
         os.remove(f)
 
+
 def test_write_csv(out_file):
     """
     Test the writing of a csv with metadata
     """
-    meta = {"model":"10"}
-    df = DataFrame({'data':[1,2,3]})
+    meta = {"model": "10"}
+    df = DataFrame({'data': [1, 2, 3]})
     write_csv(df, meta, out_file)
 
     with open(out_file) as fp:
         txt = ''.join(fp.readlines())
-    print(txt)
     assert txt == 'model = 10\ndata\n1\n2\n3\n'
