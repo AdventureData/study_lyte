@@ -1,5 +1,5 @@
 import numpy as np
-
+from .adjustments import get_neutral_bias_at_border
 
 def get_signal_event(signal_series, threshold=0.001, search_direction='forward'):
     """
@@ -43,53 +43,35 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward')
     return event_idx
 
 
-def get_normal_neutral_acceleration(acceleration, bias_value):
-    """
-    Bias adjust the acceleration and then normalize it by the max of the
-    signal
-
-    Args:
-        acceleration: pandas Series numpy array of acceleration data
-        bias_value: Value to use for bias adjusting the data
-    Returns:
-        bias_adj: bias adjusted and absolute value of acceleration
-    """
-    # Bias adjust for gravity and absolute value
-    bias_adj = abs(acceleration - bias_value)
-    return bias_adj
-
-
-def get_acceleration_start(acceleration, n_points_for_basis=200, threshold=0.1):
+def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.1):
     """
     Returns the index of the first value that has a relative change
     Args:
         acceleration: np.array or pandas series of acceleration data
-        n_points_for_basis: Num of points to average over to use as the basis for the threshold change
+        fractional_basis: fraction of the number of points to average over for bias adjustment
         threshold
 
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    bias = acceleration[0:n_points_for_basis].mean()
-    accel_norm = get_normal_neutral_acceleration(acceleration, bias)
+    accel_norm = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis).abs()
     acceleration_start = get_signal_event(accel_norm, threshold=threshold, search_direction='forward')
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, n_points_for_basis=10, threshold=0.1):
+def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=0.1):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
     Args:
         acceleration: np.array or pandas series of acceleration data
-        n_points_for_basis: Num of points to average over to use as the basis for the threshold change
+        fractional_basis: fraction of the number of points to average over for bias adjustment
         threshold: Float in g's for
 
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    bias = acceleration[-1*n_points_for_basis:].mean()
-    accel_norm = get_normal_neutral_acceleration(acceleration, bias)
+    accel_norm = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backwards').abs()
     acceleration_stop = get_signal_event(accel_norm, threshold=threshold, search_direction='backwards')
     return acceleration_stop
 
@@ -123,10 +105,17 @@ def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
     """
-    bias = active[-1*n_points_for_basis:].mean()
-    norm = (active - bias) / active.max()
+    bias = active[-1*n_points_for_basis:].min()
+    norm = active - bias
+    norm = abs(norm / norm.max())
     stop = get_signal_event(norm, threshold=threshold, search_direction='backwards')
+    # import matplotlib.pyplot as plt
+    # plt.plot(norm)
+    # plt.show()
+    # print(norm[-10*n_points_for_basis:])
+    # print(stop / len(active))
     return stop
+
 
 def get_acc_maximum(acceleration):
     ind = np.argwhere(acceleration.max())

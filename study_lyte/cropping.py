@@ -4,7 +4,7 @@ import pandas as pd
 
 
 @time_series
-def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs, stop_kwargs) -> pd.DataFrame:
+def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs={}, stop_kwargs={}) -> pd.DataFrame:
     """
     Crop the dataset to the only the motion as seen by the
     accelerometer
@@ -20,8 +20,7 @@ def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs, stop_kwa
     """
     start = get_acceleration_start(df[detect_col], **start_kwargs)
     stop = get_acceleration_stop(df[detect_col], **stop_kwargs)
-
-    cropped = df.loc[start:stop, df.columns]
+    cropped = df.iloc[start:stop]
     return cropped
 
 
