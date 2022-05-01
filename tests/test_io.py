@@ -33,7 +33,7 @@ def test_read_csv_meta(data_dir, f, expected_meta):
     Test the read_csv function
     """
     df, meta = read_csv(join(data_dir, f))
-    assert meta == pytest.approx(expected_meta)
+    assert meta == expected_meta
 
 
 @pytest.fixture()
