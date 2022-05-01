@@ -1,4 +1,5 @@
-from study_lyte.adjustments import get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border
+from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
+                                    merge_time_series)
 import pytest
 import pandas as pd
 import numpy as np
@@ -47,3 +48,32 @@ def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_
     df = pd.DataFrame({'data': np.array(data)})
     result = get_normalized_at_border(df['data'], fractional_basis=fractional_basis, direction=direction)
     assert result.iloc[ideal_norm_index] == 1
+
+
+@pytest.mark.parametrize('data_list, expected', [
+    # Typical use, low sample to high res
+    ([np.linspace(1, 4, 4), np.linspace(1, 4, 2)], 2 * [np.linspace(1, 4, 4)]),
+    # No data
+    ([], []),
+])
+def test_merge_time_series(data_list, expected):
+    # build a convenient list of dataframes
+    other_dfs = []
+    expected_dict = {}
+    for i, data in enumerate(data_list):
+        name = f'data_{i}'
+        # Let the number of values determine the sampling of time, always across 1 second
+        ts = np.linspace(0, 1, len(data))
+        df = pd.DataFrame({'time': ts, name: data})
+        other_dfs.append(df)
+
+        # Build the expected dictionary
+        expected_dict[name] = expected[i]
+
+    result = merge_time_series(other_dfs)
+
+    # Build the expected using the expected input
+    expected_df = pd.DataFrame(expected_dict)
+    exp_cols = expected_df.columns
+
+    pd.testing.assert_frame_equal(result[exp_cols], expected_df)

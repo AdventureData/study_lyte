@@ -48,3 +48,31 @@ def get_normalized_at_border(df: pd.DataFrame, fractional_basis: float = 0.01, d
     border_avg = get_directional_mean(df, fractional_basis=fractional_basis, direction=direction)
     border_norm = df / border_avg
     return border_norm
+
+
+def merge_time_series(df_list):
+    """
+    Merges the other dataframes into the primary datafrane
+    which set the resolution for the other dataframes. The final
+    result is interpolated to eliminate nans.
+
+    Args:
+        df_list: List of pd Dataframes to be merged and interpolated
+
+    Returns:
+        result: pd.DataFrame containing the interpolated results all merged
+                into the same dataframe using the high resolution
+    """
+    # Build dummy result in case no data is passed
+    result = pd.DataFrame()
+
+    # Merge everything else to it
+    for i, df in enumerate(df_list):
+        if i == 0:
+            result = df.copy()
+        else:
+            result = pd.merge_ordered(result, df, on='time')
+
+    # interpolate the nan's
+    result = result.interpolate(method='index')
+    return result
