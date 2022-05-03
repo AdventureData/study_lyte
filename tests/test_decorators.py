@@ -25,11 +25,14 @@ def test_directional(direction, raises_error):
 @pytest.mark.parametrize('df, raises_error', [
     # Test setting time as the index
     (pd.DataFrame({'time': [1], 'data': [1]}), False),
-    # Test observing time is the index
+    # # Test observing time is the index
     (pd.DataFrame({'time': [1], 'data': [1]}).set_index('time'), False),
-    # Test no time index error
+    # # Test no time index error
     (pd.DataFrame({'data': [1]}), True),
-
+    # Test series use with time
+    (pd.Series(data=[1], index=pd.RangeIndex(start=0, stop=1, step=1, name='time')), False),
+    # Test series use without time, raise an error
+    (pd.Series(data=[1]), True),
 ])
 def test_time_series_decorator(df, raises_error):
     @time_series

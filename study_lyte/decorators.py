@@ -1,5 +1,7 @@
 import functools
 
+import pandas as pd
+
 
 def time_series(func):
     """
@@ -9,14 +11,18 @@ def time_series(func):
     """
 
     @functools.wraps(func)
-    def set_time_series(df, *args, **kwargs):
-        if df.index.name != 'time' and 'time' not in df.columns:
-            raise ValueError(f"Time series data requires a 'time' column or index named time to calculate!")
+    def set_time_series(pd_obj, *args, **kwargs):
+        if type(pd_obj) == pd.DataFrame:
+            if pd_obj.index.name != 'time' and 'time' not in pd_obj.columns:
+                raise ValueError(f"Time series data requires a 'time' column or index named time to calculate!")
+            elif pd_obj.index.name != 'time' and 'time' in pd_obj.columns:
+                pd_obj = pd_obj.set_index('time')
 
-        if 'time' in df.columns:
-            df = df.set_index('time')
-        result = func(df, *args, **kwargs)
+        elif type(pd_obj) == pd.Series:
+            if pd_obj.index.name != 'time':
+                raise ValueError(f"Time series data requires index named 'time' to calculate!")
 
+        result = func(pd_obj, *args, **kwargs)
         return result
 
     return set_time_series
