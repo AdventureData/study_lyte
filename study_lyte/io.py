@@ -1,9 +1,9 @@
 from typing.io import TextIO
-from typing import Union
+from typing import Tuple
 import pandas as pd
 
 
-def read_csv(f: TextIO) -> Union[pd.DataFrame, dict]:
+def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
     """
     Reads any Lyte probe CSV and returns a dataframe
     and metadata dictionary from the header
