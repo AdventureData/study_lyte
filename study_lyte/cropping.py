@@ -37,9 +37,9 @@ def crop_to_snow(df: pd.DataFrame, active_col='Sensor2', ambient_col='Sensor3', 
         kwargs: Other keyword arguments to pass on to detect.get_nir_surface
 
     Returns:
-        cropped: pd.Dataframe cropped to the time period where motion start/stopped
+        cropped: pd.Dataframe cropped to the time period where where a surface was detected to the end
     """
-    surface = get_nir_surface(df)
-    cropped = df.loc[surface:, df.columns]
+    surface = get_nir_surface(df[ambient_col], df[active_col], **kwargs)
+    cropped = df.iloc[surface:]
     return cropped
 

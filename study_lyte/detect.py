@@ -112,6 +112,3 @@ def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
 
     return stop
 
-
-def get_acc_maximum(acceleration):
-    ind = np.argwhere(acceleration.max())
