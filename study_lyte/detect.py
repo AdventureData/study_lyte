@@ -5,14 +5,16 @@ from .decorators import directional
 
 
 @directional(check='search_direction')
-def get_signal_event(signal_series, threshold=0.001, search_direction='forward'):
+def get_signal_event(signal_series, threshold=0.001, search_direction='forward',  max_theshold=None, n_points=1):
     """
     Generic function for detecting relative changes in a given signal.
 
     Args:
         signal_series: Numpy Array or Pandas Series
-        threshold: Float value of threshold of values to return as the event
+        threshold: Float value of a min threshold of values to return as the event
         search_direction: string indicating which direction in the data to begin searching for event, options are forward/backward
+        max_theshold: Float value of a max threshold that events have to be under to be an event
+        n_points: Number of points in a row meeting threshold criteria to be an event.
 
     Returns:
         event_idx: Integer of the index where values meet the threshold criteria
@@ -23,28 +25,56 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward')
     # Assume Numpy array
     else:
         sig = signal_series
+    arr = sig
 
-    if 'forward' in search_direction:
-        ind = np.argwhere(sig >= threshold)
+    # Invert array if backwards looking
+    if 'backward' in search_direction:
+        arr = sig[::-1]
+
+    idx = arr >= threshold
+    if max_theshold is not None:
+        idx = idx & (arr < max_theshold)
+
+    ind = np.argwhere(idx==True)
+    ind = np.array([i[0] for i in ind])
 
     # Handle backward/backward usage
-    elif 'backward' in search_direction:
-        ind = np.argwhere(sig[::-1] >= threshold)
-        ind = len(sig) - ind - 1
+    if 'backward' in search_direction:
+        ind = len(arr) - ind - 1
+
+    if n_points > 1:
+        npnts = n_points - 1
+        id_diff = np.ones_like(ind)*0
+        id_diff[1:] = (ind[1:] - ind[0:-1])
+        id_diff[0] = 1
+        id_diff = np.abs(id_diff)
+        spacing_ind = []
+        # Determine if the last npoints are all 1 idx apart
+        for i, ix in enumerate(ind):
+            if i >= npnts:
+                test_arr = id_diff[i - npnts:i+1]
+                if all(test_arr == 1):
+                    spacing_ind.append(ix)
+        ind = spacing_ind
 
     # If no results are found, return the first index the series
     if len(ind) == 0:
         event_idx = 0
         if 'backward' in search_direction:
-            event_idx = len(sig) - event_idx - 1
-
+            event_idx = len(arr) - event_idx - 1
     else:
-        event_idx = ind[0][0]
+        event_idx = ind[0]
+
+    import matplotlib.pyplot as plt
+    ax = signal_series.plot()
+    ax.plot(signal_series[idx], 'r^')
+    ax.axvline(event_idx, color='g')
+    plt.show()
 
     return event_idx
 
 
-def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.1):
+def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0):
     """
     Returns the index of the first value that has a relative change
     Args:
@@ -55,12 +85,14 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    accel_norm = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis).abs()
-    acceleration_start = get_signal_event(accel_norm, threshold=threshold, search_direction='forward')
+    ind = np.argwhere((acceleration == acceleration.max()).values)[0][0]
+    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis).abs()
+    sig = accel_neutral[0:ind]
+    acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.2, n_points=int(0.05*len(sig)), search_direction='backward')
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=0.1):
+def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.01):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -72,9 +104,12 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=0.1):
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-    accel_norm = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backward').abs()
-    acceleration_stop = get_signal_event(accel_norm, threshold=threshold, search_direction='backward')
-    return acceleration_stop
+
+    ind = np.argwhere((acceleration == acceleration.max()).values)[0][0]
+    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis)
+    sig = accel_neutral[ind:]
+    acceleration_stop = get_signal_event(sig, threshold=threshold, max_theshold=0.01, n_points=int(0.01*len(sig)), search_direction='forward')
+    return acceleration_stop + ind
 
 
 def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
