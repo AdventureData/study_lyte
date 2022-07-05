@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from os.path import join
 
+
 @pytest.fixture(scope='session')
 def messy_acc(data_dir):
     df, meta = read_csv(join(data_dir, 'messy_acceleration.csv'))
@@ -34,12 +35,11 @@ def test_get_signal_event(data, threshold, direction, max_theshold, n_points, ex
 
 @pytest.mark.parametrize("data, fractional_basis, threshold, expected", [
     # Test a typical acceleration signal
-    ([-1, 0.3, -1.5, -1], 0.25, 0.1, 1),
-    # Test the mean basis value
-    ([-2, -6, -8, -12], 0.5, 2.1, 2),
-    # No criteria met, return the first index
-    ([-1, -1, -1, -1], 0.25, 10, 0),
-    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2/13, 0.1, 5)
+    #([-1, 0.3, -1.5, -1], 0.25, 0.1, 1),
+    # No criteria met, return the first index before the max
+    #([-1, -1, -1, -1], 0.25, 10, 0),
+    # Test with small bump before start
+    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2/13, 0.1, 6)
 ])
 def test_get_acceleration_start(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration':  np.array(data)})
@@ -49,16 +49,12 @@ def test_get_acceleration_start(data, fractional_basis, threshold, expected):
 
 def test_get_acceleration_start_messy(messy_acc):
     idx = get_acceleration_start(messy_acc[['Y-Axis']])
-    import matplotlib.pyplot as plt
-    ax = messy_acc.plot()
-    ax.axvline(idx)
-    plt.show()
-    assert idx == 158
+    assert idx == 157
 
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
-    # Test normalization and abs
-    ([0.1, -1.5, -1.0], 1 / 3, 1.0, 0),
+    # Test typical use
+    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1/7, -0.01, 3),
     # Test a no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 ])
@@ -68,14 +64,9 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     assert idx == expected
 
 
-
 def test_get_acceleration_stop_messy(messy_acc):
     idx = get_acceleration_stop(messy_acc[['Y-Axis']])
-    import matplotlib.pyplot as plt
-    ax = messy_acc['Y-Axis'].plot()
-    ax.axvline(idx)
-    plt.show()
-    assert idx == 260
+    assert idx == 256
 
 
 @pytest.mark.parametrize("ambient, active, fractional_basis, threashold, expected", [

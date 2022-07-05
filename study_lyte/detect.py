@@ -5,7 +5,7 @@ from .decorators import directional
 
 
 @directional(check='search_direction')
-def get_signal_event(signal_series, threshold=0.001, search_direction='forward',  max_theshold=None, n_points=1):
+def get_signal_event(signal_series, threshold=0.001, search_direction='forward', max_theshold=None, n_points=1):
     """
     Generic function for detecting relative changes in a given signal.
 
@@ -35,7 +35,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     if max_theshold is not None:
         idx = idx & (arr < max_theshold)
 
-    ind = np.argwhere(idx==True)
+    ind = np.argwhere(idx == True)
     ind = np.array([i[0] for i in ind])
 
     # Handle backward/backward usage
@@ -44,7 +44,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
 
     if n_points > 1:
         npnts = n_points - 1
-        id_diff = np.ones_like(ind)*0
+        id_diff = np.ones_like(ind) * 0
         id_diff[1:] = (ind[1:] - ind[0:-1])
         id_diff[0] = 1
         id_diff = np.abs(id_diff)
@@ -52,7 +52,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         # Determine if the last npoints are all 1 idx apart
         for i, ix in enumerate(ind):
             if i >= npnts:
-                test_arr = id_diff[i - npnts:i+1]
+                test_arr = id_diff[i - npnts:i + 1]
                 if all(test_arr == 1):
                     spacing_ind.append(ix)
         ind = spacing_ind
@@ -64,12 +64,6 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
             event_idx = len(arr) - event_idx - 1
     else:
         event_idx = ind[0]
-
-    import matplotlib.pyplot as plt
-    ax = signal_series.plot()
-    ax.plot(signal_series[idx], 'r^')
-    ax.axvline(event_idx, color='g')
-    plt.show()
 
     return event_idx
 
@@ -85,10 +79,18 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
+    # Find the max value
     ind = np.argwhere((acceleration == acceleration.max()).values)[0][0]
+    # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis).abs()
-    sig = accel_neutral[0:ind]
-    acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.2, n_points=int(0.05*len(sig)), search_direction='backward')
+    sig = accel_neutral[0:ind + 1]
+    acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.2, n_points=int(0.05 * len(sig)),
+                                          search_direction='backward')
+    import matplotlib.pyplot as plt
+    ax = acceleration.plot(alpha=0.5)
+    sig.plot(ax=ax)
+    ax.axvline(acceleration_start, color='m')
+    plt.show()
     return acceleration_start
 
 
@@ -104,12 +106,20 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.01):
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
-
+    # Identify the maximum
     ind = np.argwhere((acceleration == acceleration.max()).values)[0][0]
+    # remove gravity
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis)
+    # Isolate the area of the signal known to have the stop
     sig = accel_neutral[ind:]
-    acceleration_stop = get_signal_event(sig, threshold=threshold, max_theshold=0.01, n_points=int(0.01*len(sig)), search_direction='forward')
-    return acceleration_stop + ind
+    event = get_signal_event(sig, threshold=threshold, max_theshold=0.06, n_points=int(0.01 * len(sig)),
+                             search_direction='forward')
+    if event == 0:
+        acceleration_stop = len(acceleration) - 1
+    else:
+        acceleration_stop = ind + event
+
+    return acceleration_stop
 
 
 def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
@@ -140,10 +150,9 @@ def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
     """
-    bias = active[-1*n_points_for_basis:].min()
+    bias = active[-1 * n_points_for_basis:].min()
     norm = active - bias
     norm = abs(norm / norm.max())
     stop = get_signal_event(norm, threshold=threshold, search_direction='backward')
 
     return stop
-
