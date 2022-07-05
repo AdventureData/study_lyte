@@ -86,11 +86,7 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     sig = accel_neutral[0:ind + 1]
     acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.2, n_points=int(0.05 * len(sig)),
                                           search_direction='backward')
-    import matplotlib.pyplot as plt
-    ax = acceleration.plot(alpha=0.5)
-    sig.plot(ax=ax)
-    ax.axvline(acceleration_start, color='m')
-    plt.show()
+
     return acceleration_start
 
 
