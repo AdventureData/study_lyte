@@ -1,3 +1,4 @@
+import numpy as np
 from typing.io import TextIO
 from typing import Tuple
 import pandas as pd
@@ -36,6 +37,12 @@ def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
         df = pd.read_csv(f, header=header_position)
         # Drop any columns written with the plain index
         df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
+        if 'time' not in df.columns:
+            sample_keys = [c for c in metadata.keys() if 'sampl' in c]
+            if sample_keys:
+                sample_key = sample_keys[0]
+                n = len(df.index)
+                df['time'] = np.linspace(0, n/metadata[sample_key], n)
 
         return df, metadata
 

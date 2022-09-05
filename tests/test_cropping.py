@@ -4,7 +4,7 @@ from study_lyte.cropping import crop_to_motion, crop_to_snow
 
 
 @pytest.mark.parametrize('fname, start_kwargs, stop_kwargs, expected_time_delta', [
-    ('raw_depth_data_short.csv', {}, {}, 0.0676897922180939),
+    ('raw_depth_data_large.csv', {}, {}, 2.3263911845730023),
 ])
 def test_crop_to_motion(raw_df, fname, start_kwargs, stop_kwargs, expected_time_delta):
     """
