@@ -46,10 +46,17 @@ def test_get_acceleration_start(data, fractional_basis, threshold, expected):
     idx = get_acceleration_start(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold)
     assert idx == expected
 
-
-def test_get_acceleration_start_messy(messy_acc):
-    idx = get_acceleration_start(messy_acc[['Y-Axis']])
-    assert idx == 144
+@pytest.mark.parametrize('fname, start_idx', [
+    ('messy_acceleration.csv', 151),
+    ('bogus.csv', 17281)
+])
+def test_get_acceleration_start_messy(raw_df, start_idx):
+    idx = get_acceleration_start(raw_df[['Y-Axis']], fractional_basis = 0.01, threshold=0.001)
+    import matplotlib.pyplot as plt
+    ax = raw_df['Y-Axis'].plot()
+    ax.axvline(idx, color='red')
+    plt.show()
+    assert idx == start_idx
 
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
@@ -65,9 +72,9 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
 
 
 @pytest.mark.parametrize('fname, stop_idx', [
-   ('messy_acceleration.csv', 273),
-   ('raw_depth_data_short.csv', 280),
-
+   #('messy_acceleration.csv', 273),
+   #('raw_depth_data_short.csv', 280),
+   ('bogus.csv', 100)
 ])
 def test_get_acceleration_stop_messy(raw_df, stop_idx):
     idx = get_acceleration_stop(raw_df[['Y-Axis']], fractional_basis=0.01, threshold=-0.001)

@@ -91,7 +91,7 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration[0:max_ind], fractional_basis=fractional_basis)
     sig = accel_neutral.iloc[0:max_ind + 1]
-    acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.05, n_points=int(0.05 * len(sig)),
+    acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.05, n_points=int(0.01 * len(sig)),
                                           search_direction='backward')
 
     return acceleration_start
