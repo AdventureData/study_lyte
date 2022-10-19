@@ -64,9 +64,14 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     assert idx == expected
 
 
-def test_get_acceleration_stop_messy(messy_acc):
-    idx = get_acceleration_stop(messy_acc[['Y-Axis']])
-    assert idx == 273
+@pytest.mark.parametrize('fname, stop_idx', [
+   ('messy_acceleration.csv', 273),
+   ('raw_depth_data_short.csv', 280),
+
+])
+def test_get_acceleration_stop_messy(raw_df, stop_idx):
+    idx = get_acceleration_stop(raw_df[['Y-Axis']], fractional_basis=0.01, threshold=-0.001)
+    assert idx == stop_idx
 
 
 @pytest.mark.parametrize("ambient, active, fractional_basis, threashold, expected", [
