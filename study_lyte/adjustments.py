@@ -1,15 +1,16 @@
+import numpy as np
 import pandas as pd
 
 
-def get_directional_mean(df: pd.DataFrame, fractional_basis: float = 0.01, direction='forward'):
+def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, direction='forward'):
     """
     Calculates the mean from a collection of points at the beginning or end of a dataframe
     """
-    idx = int(fractional_basis * len(df.index))
+    idx = int(fractional_basis * len(arr))
     if direction == 'forward':
-        avg = df.iloc[0:idx].mean()
+        avg = arr[0:idx].mean()
     elif direction == 'backward':
-        avg = df.iloc[-1*idx:].mean()
+        avg = arr[-1*idx:].mean()
     else:
         raise ValueError('Invalid Direction used, Use either forward or backward.')
     return avg

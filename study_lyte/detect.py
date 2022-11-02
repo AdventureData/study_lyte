@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
@@ -79,18 +80,20 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
+    acceleration = acceleration.values
+
     # Find the min value
-    ind = np.argwhere((acceleration == acceleration.min()).values)[0][0]
+    ind = np.argwhere((acceleration == acceleration.min()))[0][0]
 
     # Find the max value of the values before the minimum
     if ind == 0:
         max_ind = 1
     else:
-        max_ind = np.argwhere((acceleration.iloc[0:ind] == acceleration.iloc[0:ind].max()).values)[0][0]
+        max_ind = np.argwhere((acceleration[0:ind] == acceleration[0:ind].max()))[0][0]
 
     # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration[0:max_ind], fractional_basis=fractional_basis)
-    sig = accel_neutral.iloc[0:max_ind + 1]
+    sig = accel_neutral[0:max_ind + 1]
     acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.05, n_points=int(0.01 * len(sig)),
                                           search_direction='backward')
 
@@ -102,27 +105,28 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.001)
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
     Args:
-        acceleration: np.array or pandas series of acceleration data
+        acceleration:pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
         threshold: Float in g's for
 
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
+    acceleration = acceleration.values
     # Find the min value
-    ind = np.argwhere((acceleration == acceleration.min()).values)[0][0]
+    ind = np.argwhere((acceleration == acceleration.min()))[0][0]
 
     # Find the max value of the values before the minimum
     if ind == 0:
         max_ind = len(acceleration) - 1
     else:
-        max_ind = np.argwhere((acceleration.iloc[0:ind] == acceleration.iloc[0:ind].max()).values)[0][0]
+        max_ind = np.argwhere((acceleration[0:ind] == acceleration[0:ind].max()))[0][0]
 
     # remove gravity
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis)
     # Isolate the area of the signal known to have the stop
     sig = accel_neutral[max_ind:]
-    event = get_signal_event(sig, threshold=threshold, max_theshold=0.01, n_points=int(0.01 * len(sig)),
+    event = get_signal_event(sig, threshold=threshold, max_theshold=0.06, n_points=int(0.01 * len(sig)),
                              search_direction='forward')
     if event == 0:
         acceleration_stop = len(acceleration) - 1

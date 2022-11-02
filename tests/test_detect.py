@@ -29,7 +29,8 @@ def test_get_signal_event(data, threshold, direction, max_theshold, n_points, ex
     Test the signal event is capable of return the correct index
     regardless of threshold, direction, and series or numpy array
     """
-    idx = get_signal_event(data, threshold=threshold, search_direction=direction, max_theshold=max_theshold, n_points=n_points)
+    idx = get_signal_event(data, threshold=threshold, search_direction=direction, max_theshold=max_theshold,
+                           n_points=n_points)
     assert idx == expected
 
 
@@ -39,46 +40,61 @@ def test_get_signal_event(data, threshold, direction, max_theshold, n_points, ex
     # No criteria met, return the first index before the max
     ([-1, -1, -1, -1], 0.25, 10, 0),
     # Test with small bump before start
-    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2/13, 0.1, 5)
+    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, 0.1, 5)
 ])
 def test_get_acceleration_start(data, fractional_basis, threshold, expected):
-    df = pd.DataFrame({'acceleration':  np.array(data)})
+    df = pd.DataFrame({'acceleration': np.array(data)})
     idx = get_acceleration_start(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold)
     assert idx == expected
 
+
 @pytest.mark.parametrize('fname, start_idx', [
     ('messy_acceleration.csv', 151),
-    ('bogus.csv', 17281)
+    ('bogus.csv', 17281),
+    ('fusion.csv', 32762),
 ])
 def test_get_acceleration_start_messy(raw_df, start_idx):
-    idx = get_acceleration_start(raw_df[['Y-Axis']], fractional_basis = 0.01, threshold=0.001)
-    import matplotlib.pyplot as plt
-    ax = raw_df['Y-Axis'].plot()
-    ax.axvline(idx, color='red')
-    plt.show()
-    assert idx == start_idx
+    idx = get_acceleration_start(raw_df[['Y-Axis']], fractional_basis=0.01, threshold=0.001)
+    assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == start_idx
 
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1/7, -0.01, 3),
+    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, -0.01, 3),
     # Test a no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 ])
 def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
-    df = pd.DataFrame({'acceleration':  np.array(data)})
+    df = pd.DataFrame({'acceleration': np.array(data)})
     idx = get_acceleration_stop(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold)
     assert idx == expected
 
 
 @pytest.mark.parametrize('fname, stop_idx', [
-   #('messy_acceleration.csv', 273),
-   #('raw_depth_data_short.csv', 280),
-   ('bogus.csv', 100)
+    ('messy_acceleration.csv', 256),
+    ('bogus.csv', 32400),
+    ('fusion.csv', 54083),
+    # ('raw_depth_data_short.csv', 310),
+
 ])
 def test_get_acceleration_stop_messy(raw_df, stop_idx):
-    idx = get_acceleration_stop(raw_df[['Y-Axis']], fractional_basis=0.01, threshold=-0.001)
-    assert idx == stop_idx
+    idx = get_acceleration_stop(raw_df['Y-Axis'], fractional_basis=0.3, threshold=-0.0001)
+    # Ensure within 1% of original answer all the time.
+    assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == stop_idx
+
+
+@pytest.mark.parametrize('fname', ['fusion.csv'])
+def test_get_acceleration_stop_time_index(raw_df):
+    """
+    Confirm the result is independent of the time index being set or not
+    """
+    # Without time index
+    idx1 = get_acceleration_stop(raw_df['Y-Axis'], fractional_basis=0.01, threshold=-0.001)
+    # with time index
+    df = raw_df.set_index('time')
+    idx2 = get_acceleration_stop(df['Y-Axis'], fractional_basis=0.01, threshold=-0.001)
+
+    assert idx1 == idx2
 
 
 @pytest.mark.parametrize("ambient, active, fractional_basis, threashold, expected", [
@@ -89,8 +105,8 @@ def test_get_acceleration_stop_messy(raw_df, stop_idx):
 
 ])
 def test_get_nir_surface(ambient, active, fractional_basis, threashold, expected):
-    df = pd.DataFrame({'ambient':  np.array(ambient),
-                       'active':  np.array(active)})
+    df = pd.DataFrame({'ambient': np.array(ambient),
+                       'active': np.array(active)})
 
     idx = get_nir_surface(df['ambient'], df['active'], fractional_basis=fractional_basis, threshold=threashold)
     assert idx == expected
