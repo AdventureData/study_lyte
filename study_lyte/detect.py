@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
@@ -99,11 +98,6 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     acceleration_start = get_signal_event(accel_neutral, threshold=threshold, max_theshold=max_theshold,
                                           n_points=int(0.01 * len(accel_neutral)),
                                           search_direction='backward')
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1)
-    ax.plot(acceleration)
-    ax.axvline(acceleration_start, color='red')
-    plt.show()
     return acceleration_start
 
 

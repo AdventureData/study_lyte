@@ -6,7 +6,7 @@ def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, directio
     """
     Calculates the mean from a collection of points at the beginning or end of a dataframe
     """
-    idx = int(fractional_basis * len(arr))
+    idx = int(fractional_basis * len(arr)) or 1
     if direction == 'forward':
         avg = arr[0:idx].mean()
     elif direction == 'backward':
