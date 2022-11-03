@@ -37,10 +37,10 @@ def test_get_signal_event(data, threshold, direction, max_theshold, n_points, ex
 @pytest.mark.parametrize("data, fractional_basis, threshold, expected", [
     # Test a typical acceleration signal
     ([-1, 0.3, -1.5, -1], 0.25, 0.1, 0),
-    # No criteria met, return the first index before the max
+    # # No criteria met, return the first index before the max
     ([-1, -1, -1, -1], 0.25, 10, 0),
     # Test with small bump before start
-    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, 0.1, 5)
+    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, -1.1, 4)
 ])
 def test_get_acceleration_start(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})

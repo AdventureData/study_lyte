@@ -20,6 +20,8 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     Returns:
         event_idx: Integer of the index where values meet the threshold criteria
     """
+    # npoints can't be 0
+    n_points = n_points or 1
     # Parse whether to work with a pandas Series
     if hasattr(signal_series, 'values'):
         sig = signal_series.values
@@ -32,18 +34,19 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     if 'backward' in search_direction:
         arr = sig[::-1]
 
+    # Find all values between threshold and max threshold
     idx = arr >= threshold
     if max_theshold is not None:
         idx = idx & (arr < max_theshold)
-
-    ind = np.argwhere(idx == True)
+    # Parse the indices
+    ind = np.argwhere(idx)
     ind = np.array([i[0] for i in ind])
 
-    # Handle backward/backward usage
+    # Invert the index
     if 'backward' in search_direction:
         ind = len(arr) - ind - 1
-
-    if n_points > 1:
+    # if we have results, find the first match with npoints that meet the criteria
+    if n_points > 1 and len(ind) > 0:
         npnts = n_points - 1
         id_diff = np.ones_like(ind) * 0
         id_diff[1:] = (ind[1:] - ind[0:-1])
@@ -61,15 +64,15 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     # If no results are found, return the first index the series
     if len(ind) == 0:
         event_idx = 0
-        if 'backward' in search_direction:
-            event_idx = len(arr) - event_idx - 1
     else:
         event_idx = ind[0]
+    # if 'backward' in search_direction:
+    #     event_idx = len(arr) - event_idx - 1
 
     return event_idx
 
 
-def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.001):
+def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.001, max_theshold=0.05):
     """
     Returns the index of the first value that has a relative change
     Args:
@@ -93,14 +96,18 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
 
     # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration[0:max_ind], fractional_basis=fractional_basis)
-    sig = accel_neutral[0:max_ind + 1]
-    acceleration_start = get_signal_event(sig, threshold=threshold, max_theshold=0.05, n_points=int(0.01 * len(sig)),
+    acceleration_start = get_signal_event(accel_neutral, threshold=threshold, max_theshold=max_theshold,
+                                          n_points=int(0.01 * len(accel_neutral)),
                                           search_direction='backward')
-
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1)
+    ax.plot(acceleration)
+    ax.axvline(acceleration_start, color='red')
+    plt.show()
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.001):
+def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.001, max_theshold=0.06):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -113,10 +120,10 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.001)
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
-    # Find the min value
+    # Find the min value of the whole array
     ind = np.argwhere((acceleration == acceleration.min()))[0][0]
 
-    # Find the max value of the values before the minimum
+    # Find the max value between start and the minimum
     if ind == 0:
         max_ind = len(acceleration) - 1
     else:
@@ -126,7 +133,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.001)
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis)
     # Isolate the area of the signal known to have the stop
     sig = accel_neutral[max_ind:]
-    event = get_signal_event(sig, threshold=threshold, max_theshold=0.06, n_points=int(0.01 * len(sig)),
+    event = get_signal_event(sig, threshold=threshold, max_theshold=max_theshold, n_points=int(0.01 * len(sig)),
                              search_direction='forward')
     if event == 0:
         acceleration_stop = len(acceleration) - 1
