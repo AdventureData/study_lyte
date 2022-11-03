@@ -3,6 +3,8 @@ from scipy.integrate import cumtrapz
 import numpy as np
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
+from .detect import get_acceleration_stop, get_acceleration_start
+from scipy.signal import argrelextrema
 
 
 @time_series
@@ -47,8 +49,8 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
     # Calculate the magnitude if all the components are available
     if all([c in acceleration_columns for c in ['X-Axis', 'Y-Axis', 'Z-Axis']]):
         position_arr = np.array([position_vec['X-Axis'],
-                                position_vec['Y-Axis'],
-                                position_vec['Z-Axis']])
+                                 position_vec['Y-Axis'],
+                                 position_vec['Z-Axis']])
         position_df['magnitude'] = np.linalg.norm(position_arr, axis=0)
     return position_df
 
@@ -87,3 +89,43 @@ def get_fitted_depth(df: pd.DataFrame, column='depth', poly_deg=5) -> pd.DataFra
     return df
 
 
+@time_series
+def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
+    """
+    The Barometer depth is often stretched. Use the start and stop of the
+    Accelerometer to contrain the peaks of the barometer
+    """
+
+    start = get_acceleration_start(df[[acc_axis]])
+    stop = get_acceleration_stop(df[[acc_axis]])
+    mid = int((stop + start) / 2)
+
+    # Find peaks and valleys of barometer
+    peaks = argrelextrema(df[baro].iloc[:mid].values, np.greater)[0]
+    top = peaks[(np.abs(peaks - mid)).argmin()]
+
+    # Find valleys after Peak
+    valleys = argrelextrema(df[baro].iloc[top:].values, np.less)[0]
+    valleys = valleys + top
+    bottom = valleys[(np.abs(valleys - mid)).argmin()]
+
+    depth_values = df[baro].iloc[top:bottom].values
+    baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
+    result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
+    result[baro] = result[baro] - result[baro].iloc[0]
+    result = result.set_index('time')
+
+    # import matplotlib.pyplot as plt
+    # ax = df[baro].plot()
+    # ax1 = ax.twinx()
+    # df[acc_axis].plot(ax=ax1, alpha=0.5)
+    # ax.axvline(df.index[top], color='lime')
+    # ax.axvline(df.index[mid], color='magenta')
+    # ax.axvline(df.index[bottom], color='red')
+    # ax.plot(df.index[valleys], df[baro].iloc[valleys], color='orange', marker='.')
+    # ax.axvline(df.index[start], color='green', linestyle='dashed')
+    # ax.axvline(df.index[stop], color='red', linestyle='dashed')
+    # result[baro].plot(ax=ax)
+    #plt.show()
+
+    return result

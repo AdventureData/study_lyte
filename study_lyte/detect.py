@@ -77,8 +77,8 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     Args:
         acceleration: np.array or pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
-        threshold: relative change to indicate start
-
+        threshold: relative minimum change to indicate start
+        max_theshold: Maximum allowed threshold to be considered a start
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
