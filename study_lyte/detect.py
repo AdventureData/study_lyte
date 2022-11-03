@@ -101,7 +101,7 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.001, max_theshold=0.06):
+def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, max_theshold=0.06):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
