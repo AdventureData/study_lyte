@@ -37,6 +37,7 @@ def test_get_signal_event(data, threshold, direction, max_theshold, n_points, ex
 @pytest.mark.parametrize("data, fractional_basis, threshold, expected", [
     # Test a typical acceleration signal
     ([-1, 0.3, -1.5, -1], 0.25, 0.1, 0),
+    ([-1, -1, 1, 0, -2, -1, -1], 0.01, -0.1, 1),
     # # No criteria met, return the first index before the max
     ([-1, -1, -1, -1], 0.25, 10, 0),
     # Test with small bump before start
@@ -60,9 +61,10 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, -0.01, 3),
+   ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, -0.01, 3),
     # Test a no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
+
 ])
 def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
@@ -103,8 +105,9 @@ def test_get_acceleration_stop_time_index(raw_df):
     # Typical bright->dark ambient
     ([3000, 3000, 1000, 100], [2500, 2500, 3000, 4000], 0.25, 0.1, 2),
     # no ambient change ( dark or super cloudy)
-    ([100, 100, 100, 100], [1000, 1000, 1000, 2000], 0.5, 0.1, 3)
-
+    ([100, 100, 100, 100], [1000, 1000, 1000, 2000], 0.5, 0.1, 3),
+    # 1/2 split using defaults
+    ([1, 1, 2, 2], [2, 2, 1, 1], 0.01, 0.1, 2)
 ])
 def test_get_nir_surface(ambient, active, fractional_basis, threashold, expected):
     df = pd.DataFrame({'ambient': np.array(ambient),
@@ -112,3 +115,14 @@ def test_get_nir_surface(ambient, active, fractional_basis, threashold, expected
 
     idx = get_nir_surface(df['ambient'], df['active'], fractional_basis=fractional_basis, threshold=threashold)
     assert idx == expected
+
+
+@pytest.mark.parametrize('fname, surface_idx', [
+    ('bogus.csv', 20385),
+])
+def test_get_nir_surface_real(raw_df, fname, surface_idx):
+    """
+    Test surface with real data
+    """
+    result = get_nir_surface(raw_df['Sensor3'], raw_df['Sensor2'])
+    assert result == surface_idx

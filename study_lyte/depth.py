@@ -115,17 +115,4 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     result[baro] = result[baro] - result[baro].iloc[0]
     result = result.set_index('time')
 
-    # import matplotlib.pyplot as plt
-    # ax = df[baro].plot()
-    # ax1 = ax.twinx()
-    # df[acc_axis].plot(ax=ax1, alpha=0.5)
-    # ax.axvline(df.index[top], color='lime')
-    # ax.axvline(df.index[mid], color='magenta')
-    # ax.axvline(df.index[bottom], color='red')
-    # ax.plot(df.index[valleys], df[baro].iloc[valleys], color='orange', marker='.')
-    # ax.axvline(df.index[start], color='green', linestyle='dashed')
-    # ax.axvline(df.index[stop], color='red', linestyle='dashed')
-    # result[baro].plot(ax=ax)
-    #plt.show()
-
     return result

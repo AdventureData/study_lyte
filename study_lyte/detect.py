@@ -71,7 +71,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     return event_idx
 
 
-def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.001, max_theshold=0.05):
+def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=-0.01, max_theshold=0.05):
     """
     Returns the index of the first value that has a relative change
     Args:
@@ -109,6 +109,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, 
         acceleration:pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
         threshold: Float in g's for
+        max_theshold: Max value between the max of the signal and the end to be considered for stop criteria
 
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
@@ -141,7 +142,7 @@ def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,
-    whereas the active should receive more. Thus this function calculates the first value of the
+    whereas the active should receive more. This function calculates the first value of the
     difference of the two signals should be the snow surface.
 
     Args:
@@ -153,6 +154,9 @@ def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
     Return:
         surface: Integer index of the estimated snow surface
     """
+    ambient = ambient.values
+    active = active.values
+
     amb_norm = get_normalized_at_border(ambient, fractional_basis=fractional_basis)
     act_norm = get_normalized_at_border(active, fractional_basis=fractional_basis)
     diff = abs(act_norm - amb_norm)
