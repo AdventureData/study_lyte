@@ -73,16 +73,19 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
 
 
 @pytest.mark.parametrize('fname, column, stop_idx', [
-    ('messy_acceleration.csv', 'Y-Axis', 256),
-    ('bogus.csv', 'Y-Axis', 32400),
+    ('messy_acceleration.csv', 'Y-Axis', 262),
+    ('bogus.csv', 'Y-Axis', 33342),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-
-    # ('raw_depth_data_short.csv', 310),
+    ('soft_acceleration.csv', 'Y-Axis', 144)
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
     idx = get_acceleration_stop(raw_df[column])
+    # import matplotlib.pyplot as plt
+    # ax = raw_df[column].plot()
+    # ax.axvline(raw_df.index[idx])
+    # plt.show()
     # Ensure within 1% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == stop_idx
 

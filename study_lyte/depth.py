@@ -44,7 +44,7 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
 
     position_df = pd.DataFrame.from_dict(position_vec)
     position_df['time'] = acc.index
-    position_df.set_index('time', inplace=True)
+    position_df = position_df.set_index('time')
 
     # Calculate the magnitude if all the components are available
     if all([c in acceleration_columns for c in ['X-Axis', 'Y-Axis', 'Z-Axis']]):
@@ -109,9 +109,18 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     valleys = valleys + top
     bottom = valleys[(np.abs(valleys - mid)).argmin()]
 
+    # Determine averages of tails of the data for rescaling
+    top_avg = df[baro].iloc[0:top].median()
+    bottom_avg = df[baro].iloc[bottom:].median()
+    bottom_t = df.index[stop]
+    delta_t = df.index[start] - bottom_t
+    m = (top_avg - bottom_avg)/(df[baro].iloc[top] - df[baro].iloc[bottom])
+
     depth_values = df[baro].iloc[top:bottom].values
     baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
+    result[baro] = result.apply(lambda row: m * row[baro], axis=1)
+    # zero it out
     result[baro] = result[baro] - result[baro].iloc[0]
     result = result.set_index('time')
 

@@ -81,8 +81,8 @@ def test_get_constrained_baro_depth(depth_data, acc_data):
     assert True
 
 @pytest.mark.parametrize('fname, column, expected_depth', [
-    ('fusion.csv', 'depth', 104),
-    ('bogus.csv', 'depth', 127),
+    ('fusion.csv', 'depth', 110),
+    ('bogus.csv', 'depth', 135),
 ])
 def test_get_constrained_baro(raw_df, fname, column, expected_depth):
     """
@@ -90,4 +90,4 @@ def test_get_constrained_baro(raw_df, fname, column, expected_depth):
     """
     df = get_constrained_baro_depth(raw_df, baro=column)
     delta_d = abs(df[column].max() - df[column].min())
-    assert pytest.approx(delta_d, abs=2) == expected_depth
+    assert pytest.approx(delta_d, abs=3) == expected_depth

@@ -101,7 +101,7 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, max_theshold=0.06):
+def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, max_theshold=0.01):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -122,14 +122,22 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, 
     if ind == 0:
         max_ind = len(acceleration) - 1
     else:
+        # Find the max between the beginning to the minimum
         max_ind = np.argwhere((acceleration[0:ind] == acceleration[0:ind].max()))[0][0]
 
     # remove gravity
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis)
     # Isolate the area of the signal known to have the stop
     sig = accel_neutral[max_ind:]
-    event = get_signal_event(sig, threshold=threshold, max_theshold=max_theshold, n_points=int(0.01 * len(sig)),
+
+    # Use the number of points variably
+    n_points = int(0.02 * len(sig))
+    if n_points > 200:
+        n_points = 200
+
+    event = get_signal_event(sig, threshold=threshold, max_theshold=max_theshold, n_points=n_points,
                              search_direction='forward')
+
     if event == 0:
         acceleration_stop = len(acceleration) - 1
     else:

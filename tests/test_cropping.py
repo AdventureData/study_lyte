@@ -6,7 +6,7 @@ from study_lyte.cropping import crop_to_motion, crop_to_snow
 
 @pytest.mark.parametrize('fname, start_kwargs, stop_kwargs, expected_time_delta', [
     # ('raw_depth_data_short.csv', {}, {}, 0.0676897922180939),
-    ('bogus.csv', {}, {}, 0.9308946159519547),
+    ('bogus.csv', {}, {}, 0.9929584237698872),
 
 ])
 def test_crop_to_motion(raw_df, fname, start_kwargs, stop_kwargs, expected_time_delta):
@@ -16,7 +16,7 @@ def test_crop_to_motion(raw_df, fname, start_kwargs, stop_kwargs, expected_time_
     """
     df = crop_to_motion(raw_df, start_kwargs=start_kwargs, stop_kwargs=stop_kwargs)
     delta_t = df.index.max() - df.index.min()
-    assert pytest.approx(delta_t, abs=1e-4) == expected_time_delta
+    assert pytest.approx(delta_t, abs=1e-3) == expected_time_delta
 
 
 @pytest.mark.parametrize('active, ambient, cropped_values', [
