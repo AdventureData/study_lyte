@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from os.path import join
 
+from study_lyte.depth import get_depth_from_acceleration
 
 @pytest.fixture(scope='session')
 def messy_acc(data_dir):
@@ -50,12 +51,24 @@ def test_get_acceleration_start(data, fractional_basis, threshold, expected):
 
 
 @pytest.mark.parametrize('fname, start_idx', [
-    ('messy_acceleration.csv', 151),
-    ('bogus.csv', 17281),
+    ('messy_acceleration.csv', 37),
+    ('bogus.csv', 15048),
     ('fusion.csv', 32762),
+    ('delayed_acceleration.csv', 160),
+    ('hard_surface_hard_stop.csv', 1575)
+
 ])
 def test_get_acceleration_start_messy(raw_df, start_idx):
-    idx = get_acceleration_start(raw_df[['Y-Axis']], fractional_basis=0.01, threshold=0.001)
+    idx = get_acceleration_start(raw_df[['Y-Axis']])
+    depth = get_depth_from_acceleration(raw_df)
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(1)
+    ax.plot(depth['Y-Axis'])
+    ax1 = ax.twinx()
+    ax1.plot(raw_df['time'], raw_df['Y-Axis'], alpha=0.5)
+    ax.axvline(depth.index[idx], color='green')
+    plt.show()
     assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == start_idx
 
 
@@ -77,15 +90,12 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('bogus.csv', 'Y-Axis', 33342),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 144)
+    ('soft_acceleration.csv', 'Y-Axis', 144),
+    ('delayed_acceleration.csv', 'Y-Axis', 276)
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
     idx = get_acceleration_stop(raw_df[column])
-    # import matplotlib.pyplot as plt
-    # ax = raw_df[column].plot()
-    # ax.axvline(raw_df.index[idx])
-    # plt.show()
     # Ensure within 1% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == stop_idx
 

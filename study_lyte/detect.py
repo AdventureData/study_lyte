@@ -71,7 +71,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     return event_idx
 
 
-def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=-0.01, max_theshold=0.05):
+def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.04, max_theshold=0.06):
     """
     Returns the index of the first value that has a relative change
     Args:
@@ -83,25 +83,22 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
+    acceleration = acceleration[~np.isnan(acceleration)]
 
-    # Find the min value
-    ind = np.argwhere((acceleration == acceleration.min()))[0][0]
-
-    # Find the max value of the values before the minimum
-    if ind == 0:
-        max_ind = 1
-    else:
-        max_ind = np.argwhere((acceleration[0:ind] == acceleration[0:ind].max()))[0][0]
+    # Find the max value
+    max_ind = np.argwhere((acceleration == acceleration.max()))[0][0]
 
     # Get the neutral signal between start and the max
-    accel_neutral = get_neutral_bias_at_border(acceleration[0:max_ind], fractional_basis=fractional_basis)
+    accel_neutral = get_neutral_bias_at_border(acceleration[0:max_ind], fractional_basis=fractional_basis, direction='forward')
+
     acceleration_start = get_signal_event(accel_neutral, threshold=threshold, max_theshold=max_theshold,
-                                          n_points=int(0.01 * len(accel_neutral)),
-                                          search_direction='backward')
+                                          n_points=1,
+                                          search_direction='forward')
+
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, max_theshold=0.01):
+def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.05, max_theshold=0.01):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -115,33 +112,28 @@ def get_acceleration_stop(acceleration, fractional_basis=0.01, threshold=-0.05, 
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
+    acceleration = acceleration[~np.isnan(acceleration)]
+
     # Find the min value of the whole array
     ind = np.argwhere((acceleration == acceleration.min()))[0][0]
 
-    # Find the max value between start and the minimum
-    if ind == 0:
-        max_ind = len(acceleration) - 1
-    else:
-        # Find the max between the beginning to the minimum
-        max_ind = np.argwhere((acceleration[0:ind] == acceleration[0:ind].max()))[0][0]
-
     # remove gravity
-    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis)
+    accel_neutral = get_neutral_bias_at_border(acceleration[ind:], fractional_basis=fractional_basis, direction='backward')
     # Isolate the area of the signal known to have the stop
-    sig = accel_neutral[max_ind:]
+    sig = accel_neutral[ind:]
 
     # Use the number of points variably
-    n_points = int(0.02 * len(sig))
+    n_points = int(0.01 * len(sig))
     if n_points > 200:
         n_points = 200
 
     event = get_signal_event(sig, threshold=threshold, max_theshold=max_theshold, n_points=n_points,
-                             search_direction='forward')
+                             search_direction='backward')
 
     if event == 0:
         acceleration_stop = len(acceleration) - 1
     else:
-        acceleration_stop = max_ind + event
+        acceleration_stop = ind + event
 
     return acceleration_stop
 
