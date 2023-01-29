@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import find_peaks
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
-
+from .plotting import plot_ts
 
 @directional(check='search_direction')
 def get_signal_event(signal_series, threshold=0.001, search_direction='forward', max_threshold=None, n_points=1):
@@ -85,17 +85,18 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     acceleration = acceleration.values
     acceleration = acceleration[~np.isnan(acceleration)]
 
-    # Find the max value
-    #max_ind = np.argwhere((acceleration == acceleration.max()))[0][0]
-
     # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='forward')
-    peaks = find_peaks(np.abs(accel_neutral), 0.3, distance=10)
-    max_ind = peaks[0][0]
+    pk_idx, pk_hgt = find_peaks(np.abs(accel_neutral), 0.3, distance=10)
+    if pk_idx:
+        max_ind = pk_idx[0]
+    else:
+        max_ind = 1
 
-    acceleration_start = get_signal_event(accel_neutral[0:max_ind], threshold=threshold, max_threshold=max_threshold,
-                                          n_points=5,
+    acceleration_start = get_signal_event(accel_neutral[0:max_ind+1], threshold=threshold, max_threshold=max_threshold,
+                                          n_points=int(0.005 * len(acceleration)),
                                           search_direction='forward')
+    ax = plot_ts(accel_neutral, events=[('start', acceleration_start)], features=pk_idx)
     return acceleration_start
 
 
