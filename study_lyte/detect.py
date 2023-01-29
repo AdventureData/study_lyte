@@ -1,11 +1,11 @@
 import numpy as np
-
+from scipy.signal import find_peaks
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
 
 
 @directional(check='search_direction')
-def get_signal_event(signal_series, threshold=0.001, search_direction='forward', max_theshold=None, n_points=1):
+def get_signal_event(signal_series, threshold=0.001, search_direction='forward', max_threshold=None, n_points=1):
     """
     Generic function for detecting relative changes in a given signal.
 
@@ -13,13 +13,13 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         signal_series: Numpy Array or Pandas Series
         threshold: Float value of a min threshold of values to return as the event
         search_direction: string indicating which direction in the data to begin searching for event, options are forward/backward
-        max_theshold: Float value of a max threshold that events have to be under to be an event
+        max_threshold: Float value of a max threshold that events have to be under to be an event
         n_points: Number of points in a row meeting threshold criteria to be an event.
 
     Returns:
         event_idx: Integer of the index where values meet the threshold criteria
     """
-    # npoints can't be 0
+    # n points can't be 0
     n_points = n_points or 1
     # Parse whether to work with a pandas Series
     if hasattr(signal_series, 'values'):
@@ -35,8 +35,8 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
 
     # Find all values between threshold and max threshold
     idx = arr >= threshold
-    if max_theshold is not None:
-        idx = idx & (arr < max_theshold)
+    if max_threshold is not None:
+        idx = idx & (arr < max_threshold)
     # Parse the indices
     ind = np.argwhere(idx)
     ind = np.array([i[0] for i in ind])
@@ -64,21 +64,21 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     if len(ind) == 0:
         event_idx = 0
     else:
-        event_idx = ind[0]
+        event_idx = ind[-1]
     # if 'backward' in search_direction:
     #     event_idx = len(arr) - event_idx - 1
 
     return event_idx
 
 
-def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=0.04, max_theshold=0.06):
+def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=-0.01, max_threshold=0.02):
     """
     Returns the index of the first value that has a relative change
     Args:
         acceleration: np.array or pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
         threshold: relative minimum change to indicate start
-        max_theshold: Maximum allowed threshold to be considered a start
+        max_threshold: Maximum allowed threshold to be considered a start
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
@@ -86,19 +86,20 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     acceleration = acceleration[~np.isnan(acceleration)]
 
     # Find the max value
-    max_ind = np.argwhere((acceleration == acceleration.max()))[0][0]
+    #max_ind = np.argwhere((acceleration == acceleration.max()))[0][0]
 
     # Get the neutral signal between start and the max
-    accel_neutral = get_neutral_bias_at_border(acceleration[0:max_ind], fractional_basis=fractional_basis, direction='forward')
+    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='forward')
+    peaks = find_peaks(np.abs(accel_neutral), 0.3, distance=10)
+    max_ind = peaks[0][0]
 
-    acceleration_start = get_signal_event(accel_neutral, threshold=threshold, max_theshold=max_theshold,
-                                          n_points=1,
+    acceleration_start = get_signal_event(accel_neutral[0:max_ind], threshold=threshold, max_threshold=max_threshold,
+                                          n_points=5,
                                           search_direction='forward')
-
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.05, max_theshold=0.01):
+def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.03, max_threshold=0.01):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -106,7 +107,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.05, 
         acceleration:pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
         threshold: Float in g's for
-        max_theshold: Max value between the max of the signal and the end to be considered for stop criteria
+        max_threshold: Max value between the max of the signal and the end to be considered for stop criteria
 
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
@@ -114,11 +115,11 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.05, 
     acceleration = acceleration.values
     acceleration = acceleration[~np.isnan(acceleration)]
 
-    # Find the min value of the whole array
-    ind = np.argwhere((acceleration == acceleration.min()))[0][0]
-
     # remove gravity
-    accel_neutral = get_neutral_bias_at_border(acceleration[ind:], fractional_basis=fractional_basis, direction='backward')
+    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backward')
+    peaks = find_peaks(np.abs(accel_neutral), height=0.3, distance=5)
+    ind = peaks[0][-1]
+
     # Isolate the area of the signal known to have the stop
     sig = accel_neutral[ind:]
 
@@ -127,7 +128,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.05, 
     if n_points > 200:
         n_points = 200
 
-    event = get_signal_event(sig, threshold=threshold, max_theshold=max_theshold, n_points=n_points,
+    event = get_signal_event(sig, threshold=threshold, max_threshold=max_threshold, n_points=n_points,
                              search_direction='backward')
 
     if event == 0:

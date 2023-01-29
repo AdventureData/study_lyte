@@ -7,68 +7,60 @@ from os.path import join
 
 from study_lyte.depth import get_depth_from_acceleration
 
+
 @pytest.fixture(scope='session')
 def messy_acc(data_dir):
     df, meta = read_csv(join(data_dir, 'messy_acceleration.csv'))
     return df
 
 
-@pytest.mark.parametrize("data, threshold, direction, max_theshold, n_points, expected", [
+@pytest.mark.parametrize("data, threshold, direction, max_threshold, n_points, expected", [
     (np.array([0, 1, 0]), 0.5, 'forward', None, 1, 1),
     (pd.Series([1, 0, 0]), 0.5, 'forward', None, 1, 0),
     (np.array([0, 0, 0.1]), 0.01, 'backward', None, 1, 2),
-    (np.array([20, 100, 100, 40]), 50, 'backward', None, 1, 2),
+    (np.array([20, 100, 100, 40]), 50, 'backward', None, 1, 1),
     # Test max threshold + threshold
     (np.array([20, 100, 100, 40]), 30, 'forward', 90, 1, 3),
     # n_points test
     (np.array([2, 2, 1, 2]), 2, 'forward', None, 2, 1),
-    # All togehter
+    # All together
     (np.array([11, 10, 1, 2, 2, 3, 11]), 2, 'forward', 10, 3, 5),
 ])
-def test_get_signal_event(data, threshold, direction, max_theshold, n_points, expected):
+def test_get_signal_event(data, threshold, direction, max_threshold, n_points, expected):
     """
     Test the signal event is capable of return the correct index
     regardless of threshold, direction, and series or numpy array
     """
-    idx = get_signal_event(data, threshold=threshold, search_direction=direction, max_theshold=max_theshold,
+    idx = get_signal_event(data, threshold=threshold, search_direction=direction, max_threshold=max_threshold,
                            n_points=n_points)
     assert idx == expected
 
 
-@pytest.mark.parametrize("data, fractional_basis, threshold, expected", [
-    # Test a typical acceleration signal
-    ([-1, 0.3, -1.5, -1], 0.25, 0.1, 0),
-    ([-1, -1, 1, 0, -2, -1, -1], 0.01, -0.1, 1),
-    # # No criteria met, return the first index before the max
-    ([-1, -1, -1, -1], 0.25, 10, 0),
+@pytest.mark.parametrize("data, fractional_basis, threshold, max_threshold, expected", [
+    # Test a typical acceleration signal with a no zero start
+    ([-1, -1, 0.3, -1.5, -1], 0.2, 0, 0.5, 1),
+    ([-1, -1, -0.8, 1, 0, -2, -1, -1], 0.01, 0.1, 0.3, 2),
+    # No criteria met, return the first index before the max
+    ([-1, -1, -1, -1], 0.25, 10, 11, 0),
     # Test with small bump before start
-    ([-1, -1, 0.2, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, -1.1, 4)
+    ([-1, -1, 0.05, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, -1.1, 0.5, 4)
 ])
-def test_get_acceleration_start(data, fractional_basis, threshold, expected):
+def test_get_acceleration_start(data, fractional_basis, threshold, max_threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
-    idx = get_acceleration_start(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold)
+    idx = get_acceleration_start(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold, max_threshold=max_threshold)
     assert idx == expected
 
 
 @pytest.mark.parametrize('fname, start_idx', [
     ('messy_acceleration.csv', 37),
-    ('bogus.csv', 15048),
+    ('bogus.csv', 16178),
     ('fusion.csv', 32762),
     ('delayed_acceleration.csv', 160),
-    ('hard_surface_hard_stop.csv', 1575)
+    ('hard_surface_hard_stop.csv', 5057)
 
 ])
 def test_get_acceleration_start_messy(raw_df, start_idx):
     idx = get_acceleration_start(raw_df[['Y-Axis']])
-    depth = get_depth_from_acceleration(raw_df)
-
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(1)
-    ax.plot(depth['Y-Axis'])
-    ax1 = ax.twinx()
-    ax1.plot(raw_df['time'], raw_df['Y-Axis'], alpha=0.5)
-    ax.axvline(depth.index[idx], color='green')
-    plt.show()
     assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == start_idx
 
 
@@ -86,16 +78,18 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
 
 
 @pytest.mark.parametrize('fname, column, stop_idx', [
-    ('messy_acceleration.csv', 'Y-Axis', 262),
+    ('messy_acceleration.csv', 'Y-Axis', 353),
     ('bogus.csv', 'Y-Axis', 33342),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 144),
-    ('delayed_acceleration.csv', 'Y-Axis', 276)
+    ('soft_acceleration.csv', 'Y-Axis', 140),
+    ('delayed_acceleration.csv', 'Y-Axis', 271)
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
     idx = get_acceleration_stop(raw_df[column])
+    df = get_depth_from_acceleration(raw_df)
+
     # Ensure within 1% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.01*len(raw_df.index))) == stop_idx
 

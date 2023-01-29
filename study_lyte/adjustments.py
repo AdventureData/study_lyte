@@ -8,15 +8,15 @@ def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, directio
     """
     idx = int(fractional_basis * len(arr)) or 1
     if direction == 'forward':
-        avg = arr[0:idx].mean()
+        avg = np.nanmean(arr[:idx])
     elif direction == 'backward':
-        avg = arr[-1*idx:].mean()
+        avg = np.nanmean(arr[-1*idx:])
     else:
         raise ValueError('Invalid Direction used, Use either forward or backward.')
     return avg
 
 
-def get_neutral_bias_at_border(df: pd.DataFrame, fractional_basis: float = 0.01, direction='forward'):
+def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.01, direction='forward'):
     """
     Bias adjust the series data by using the XX % of the data either at the front of the data
     or the end of the .
@@ -29,8 +29,8 @@ def get_neutral_bias_at_border(df: pd.DataFrame, fractional_basis: float = 0.01,
     Returns:
         bias_adj: bias adjusted data to near zero
     """
-    bias = get_directional_mean(df, fractional_basis=fractional_basis, direction=direction)
-    bias_adj = df - bias
+    bias = get_directional_mean(series, fractional_basis=fractional_basis, direction=direction)
+    bias_adj = series - bias
     return bias_adj
 
 
