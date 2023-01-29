@@ -88,7 +88,7 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='forward')
     pk_idx, pk_hgt = find_peaks(np.abs(accel_neutral), 0.3, distance=10)
-    if pk_idx:
+    if len(pk_idx) > 0:
         max_ind = pk_idx[0]
     else:
         max_ind = 1
@@ -96,11 +96,10 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     acceleration_start = get_signal_event(accel_neutral[0:max_ind+1], threshold=threshold, max_threshold=max_threshold,
                                           n_points=int(0.005 * len(acceleration)),
                                           search_direction='forward')
-    ax = plot_ts(accel_neutral, events=[('start', acceleration_start)], features=pk_idx)
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.03, max_threshold=0.01):
+def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.02, max_threshold=0.2):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -118,8 +117,12 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.03, 
 
     # remove gravity
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backward')
-    peaks = find_peaks(np.abs(accel_neutral), height=0.3, distance=5)
-    ind = peaks[0][-1]
+
+    pk_idx, pk_hgt = find_peaks(-1 * accel_neutral, height=0.3, distance=5)
+    if len(pk_idx) > 0:
+        ind = pk_idx[-1]
+    else:
+        ind = 0
 
     # Isolate the area of the signal known to have the stop
     sig = accel_neutral[ind:]
@@ -129,7 +132,8 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.03, 
     if n_points > 200:
         n_points = 200
 
-    event = get_signal_event(sig, threshold=threshold, max_threshold=max_threshold, n_points=n_points,
+    event = get_signal_event(sig, threshold=threshold, max_threshold=max_threshold,
+                             n_points=n_points,
                              search_direction='backward')
 
     if event == 0:
