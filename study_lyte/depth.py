@@ -1,21 +1,22 @@
 import pandas as pd
 from scipy.integrate import cumtrapz
 import numpy as np
+from scipy.signal import argrelextrema
+
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
 from .detect import get_acceleration_stop, get_acceleration_start
-from scipy.signal import argrelextrema
-
+from .plotting import plot_ts
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis: float = 0.01) -> pd.DataFrame:
     """
-    Double integrate the acceleration to calcule a depth profile
+    Double integrate the acceleration to calculate a depth profile
     Assumes a starting position and velocity of zero.
 
     Args:
         acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis in g's
-        fractional_basis: fraction of the begining of data to calculate a bias adjustment
+        fractional_basis: fraction of the beginning of data to calculate a bias adjustment
 
     Returns:
 
@@ -32,7 +33,8 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
     acc = acceleration_df[acceleration_columns].mul(g)
 
     # Remove off local gravity
-    acc = get_neutral_bias_at_border(acc, fractional_basis)
+    for c in acc.columns:
+        acc[c] = get_neutral_bias_at_border(acc[c].values, fractional_basis)
 
     # Calculate position
     position_vec = {}
@@ -59,6 +61,12 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
 def get_average_depth(df, acc_axis='Y-Axis', depth_column='depth') -> pd.DataFrame:
     """
     Calculates the average between the barometer and the accelerometer profile
+    Args:
+        df: Timeseries df containing Acceleration and barometer
+        acc_axis: Axis to compute the depth from accelerometer
+        depth_column: Barometer depth column
+    Returns:
+        depth: Dataframe containing depth in cm
     """
     depth = get_depth_from_acceleration(df[[acc_axis]]) * 100
     depth[depth_column] = get_neutral_bias_at_border(df[depth_column], fractional_basis=0.005)
@@ -93,33 +101,25 @@ def get_fitted_depth(df: pd.DataFrame, column='depth', poly_deg=5) -> pd.DataFra
 def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     """
     The Barometer depth is often stretched. Use the start and stop of the
-    Accelerometer to contrain the peaks of the barometer
+    Accelerometer to constrain the peaks of the barometer
     """
 
     start = get_acceleration_start(df[[acc_axis]])
     stop = get_acceleration_stop(df[[acc_axis]])
     mid = int((stop + start) / 2)
 
-    # Find peaks and valleys of barometer
+    # Find peaks and valleys of barometer and select the closest to midpoint
     peaks = argrelextrema(df[baro].iloc[:mid].values, np.greater)[0]
     top = peaks[(np.abs(peaks - mid)).argmin()]
 
-    # Find valleys after Peak
+    # Find valleys after Peak, select closest to midpoint
     valleys = argrelextrema(df[baro].iloc[top:].values, np.less)[0]
     valleys = valleys + top
     bottom = valleys[(np.abs(valleys - mid)).argmin()]
 
-    # Determine averages of tails of the data for rescaling
-    top_avg = df[baro].iloc[0:top].median()
-    bottom_avg = df[baro].iloc[bottom:].median()
-    bottom_t = df.index[stop]
-    delta_t = df.index[start] - bottom_t
-    m = (top_avg - bottom_avg)/(df[baro].iloc[top] - df[baro].iloc[bottom])
-
     depth_values = df[baro].iloc[top:bottom].values
     baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
-    result[baro] = result.apply(lambda row: m * row[baro], axis=1)
     # zero it out
     result[baro] = result[baro] - result[baro].iloc[0]
     result = result.set_index('time')
