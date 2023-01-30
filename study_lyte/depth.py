@@ -6,7 +6,7 @@ from scipy.signal import argrelextrema
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
 from .detect import get_acceleration_stop, get_acceleration_start
-from .plotting import plot_ts
+
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis: float = 0.01) -> pd.DataFrame:
@@ -117,11 +117,10 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     valleys = valleys + top
     bottom = valleys[(np.abs(valleys - mid)).argmin()]
 
-    depth_values = df[baro].iloc[top:bottom].values
+    depth_values = df[baro].iloc[top:bottom+1].values
     baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
     # zero it out
-    result[baro] = result[baro] - result[baro].iloc[0]
     result = result.set_index('time')
 
     return result

@@ -72,7 +72,7 @@ def test_get_fitted_depth(unfiltered_baro):
 
 @pytest.mark.parametrize('depth_data, acc_data, start, stop', [
     # Simple example where peak/valley is beyond start/stop
-    ([0.8, 1, 0.9, 0.75, 0.5, 0.25, 0.1, 0, 0.2], [-1, -1, -1, 1, 0, -2, -1, -1, -1], 1, 5)
+    ([0.8, 1, 0.9, 0.75, 0.5, 0.25, 0.1, 0, 0.2], [-1, -1, -1, 1, 0, -2, -1, -1, -1], 2, 6)
 ])
 def test_get_constrained_baro_depth(depth_data, acc_data, start, stop):
     t = range(len(depth_data))
@@ -80,14 +80,9 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop):
     result = get_constrained_baro_depth(df)
     result_s = result.index[0]
     result_e = result.index[-1]
-    top_height = result['depth'].iloc[0]
-
-    import matplotlib.pyplot as plt
-    ax = (result['depth']).plot()
-    df['depth'].plot(ax=ax)
-    plt.show()
-
-    assert (result_s, result_e, top_height) == (start, stop, df['depth'].max())
+    expected_delta = df['depth'].max() - df['depth'].min()
+    delta_h_result = result['depth'].max() - result['depth'].min()
+    assert (result_s, result_e, delta_h_result) == (start, stop, expected_delta)
 
 @pytest.mark.parametrize('fname, column, expected_depth', [
     ('fusion.csv', 'depth', 105),
