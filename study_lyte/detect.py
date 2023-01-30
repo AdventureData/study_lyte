@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import find_peaks
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
-from .plotting import plot_ts
+
 
 @directional(check='search_direction')
 def get_signal_event(signal_series, threshold=0.001, search_direction='forward', max_threshold=None, n_points=1):
@@ -12,7 +12,8 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     Args:
         signal_series: Numpy Array or Pandas Series
         threshold: Float value of a min threshold of values to return as the event
-        search_direction: string indicating which direction in the data to begin searching for event, options are forward/backward
+        search_direction: string indicating which direction in the data to begin searching for event, options are
+                        forward/backward
         max_threshold: Float value of a max threshold that events have to be under to be an event
         n_points: Number of points in a row meeting threshold criteria to be an event.
 
@@ -44,7 +45,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     # Invert the index
     if 'backward' in search_direction:
         ind = len(arr) - ind - 1
-    # if we have results, find the first match with npoints that meet the criteria
+    # if we have results, find the first match with n points that meet the criteria
     if n_points > 1 and len(ind) > 0:
         npnts = n_points - 1
         id_diff = np.ones_like(ind) * 0
@@ -52,7 +53,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         id_diff[0] = 1
         id_diff = np.abs(id_diff)
         spacing_ind = []
-        # Determine if the last npoints are all 1 idx apart
+        # Determine if the last n points are all 1 idx apart
         for i, ix in enumerate(ind):
             if i >= npnts:
                 test_arr = id_diff[i - npnts:i + 1]
@@ -65,8 +66,6 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         event_idx = 0
     else:
         event_idx = ind[-1]
-    # if 'backward' in search_direction:
-    #     event_idx = len(arr) - event_idx - 1
 
     return event_idx
 
@@ -144,7 +143,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.02, 
     return acceleration_stop
 
 
-def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
+def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.05):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,
@@ -154,7 +153,7 @@ def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
     Args:
         ambient: Numpy Array or pandas Series of the ambient NIR signal
         active: Numpy Array or pandas Series of the active NIR signal
-        fractional_basis: Float of begining data to use as the normalization
+        fractional_basis: Float of beginning data to use as the normalization
         threshold: Float threshold value for meeting the snow surface event
 
     Return:
@@ -166,7 +165,8 @@ def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.1):
     amb_norm = get_normalized_at_border(ambient, fractional_basis=fractional_basis)
     act_norm = get_normalized_at_border(active, fractional_basis=fractional_basis)
     diff = abs(act_norm - amb_norm)
-    surface = get_signal_event(diff, threshold=threshold, search_direction='forward')
+    surface = get_signal_event(diff, threshold=threshold, search_direction='backward')
+
     return surface
 
 
@@ -178,6 +178,6 @@ def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
     bias = active[-1 * n_points_for_basis:].min()
     norm = active - bias
     norm = abs(norm / norm.max())
-    stop = get_signal_event(norm, threshold=threshold, search_direction='backward')
+    stop = get_signal_event(norm, threshold=threshold, search_direction='forward')
 
     return stop

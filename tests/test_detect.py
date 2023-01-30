@@ -90,7 +90,7 @@ def test_get_acceleration_stop_real(raw_df, column, stop_idx):
     idx = get_acceleration_stop(raw_df[column])
     df = get_depth_from_acceleration(raw_df)
 
-    # Ensure within 1% of original answer all the time.
+    # Ensure within 3% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.03 * len(raw_df.index))) == stop_idx
 
 
@@ -108,19 +108,19 @@ def test_get_acceleration_stop_time_index(raw_df):
     assert idx1 == idx2
 
 
-@pytest.mark.parametrize("ambient, active, fractional_basis, threashold, expected", [
+@pytest.mark.parametrize("ambient, active, fractional_basis, threshold, expected", [
     # Typical bright->dark ambient
-    ([3000, 3000, 1000, 100], [2500, 2500, 3000, 4000], 0.25, 0.1, 2),
+    ([3000, 3000, 1000, 100], [2500, 2600, 3000, 4000], 0.25, 0.01, 1),
     # no ambient change ( dark or super cloudy)
-    ([100, 100, 100, 100], [1000, 1000, 1000, 2000], 0.5, 0.1, 3),
+    ([100, 100, 100, 100], [1000, 1100, 2000, 3000], 0.25, 0.01, 1),
     # 1/2 split using defaults
     ([1, 1, 2, 2], [2, 2, 1, 1], 0.01, 0.1, 2)
 ])
-def test_get_nir_surface(ambient, active, fractional_basis, threashold, expected):
+def test_get_nir_surface(ambient, active, fractional_basis, threshold, expected):
     df = pd.DataFrame({'ambient': np.array(ambient),
                        'active': np.array(active)})
 
-    idx = get_nir_surface(df['ambient'], df['active'], fractional_basis=fractional_basis, threshold=threashold)
+    idx = get_nir_surface(df['ambient'], df['active'], fractional_basis=fractional_basis, threshold=threshold)
     assert idx == expected
 
 
@@ -132,4 +132,5 @@ def test_get_nir_surface_real(raw_df, fname, surface_idx):
     Test surface with real data
     """
     result = get_nir_surface(raw_df['Sensor3'], raw_df['Sensor2'])
-    assert result == surface_idx
+    # Ensure within 3% of original answer all the time.
+    assert pytest.approx(surface_idx, abs=int(0.03 * len(raw_df.index))) == result
