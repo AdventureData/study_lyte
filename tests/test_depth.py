@@ -70,55 +70,33 @@ def test_get_fitted_depth(unfiltered_baro):
     assert pytest.approx(delta, abs=5) == 130.77156406716017
 
 
-@pytest.mark.parametrize('depth_data, acc_data, start, stop', [
+@pytest.mark.parametrize('depth_data, acc_data, start, stop, expected', [
     # Simple example where peak/valley is beyond start/stop
-    ([0.8, 1, 0.9, 0.75, 0.5, 0.25, 0.1, 0, 0.2], [-1, -1, -1, 1, 0, -2, -1, -1, -1], 2, 6)
+    ([1.0, 1.2, 0.9, 0.75, 0.5, 0.25, 0.1, -0.2, 0], [-1, -1, -1, 1, 0, -2, -1, -1, -1], 2, 6, 1.0),
+    # Confirm avg of tails and rescale conveniently set to 1.
+    ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -1, 1.5, -1, -1,  -1, -1], 3, 5., 1.0),
+    # Example with no peak valley found
+    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -1, 1.5, -1, -1], 1, 3., 2)
+
 ])
-def test_get_constrained_baro_depth(depth_data, acc_data, start, stop):
+def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected):
     t = range(len(depth_data))
     df = pd.DataFrame.from_dict({'depth': depth_data, 'Y-Axis': acc_data, 'time': t})
     result = get_constrained_baro_depth(df)
     result_s = result.index[0]
     result_e = result.index[-1]
-    expected_delta = df['depth'].max() - df['depth'].min()
-    delta_h_result = result['depth'].max() - result['depth'].min()
-    assert (result_s, result_e, delta_h_result) == (start, stop, expected_delta)
+    delta_h_result = result['depth'].iloc[0] - result['depth'].iloc[-1]
+    assert (result_s, result_e, pytest.approx(abs(delta_h_result), abs=0.01)) == (start, stop, expected)
 
-@pytest.mark.parametrize('fname, column, expected_depth', [
-    ('fusion.csv', 'depth', 105),
-    ('bogus.csv', 'depth', 127),
+
+@pytest.mark.parametrize('fname, column, acc_axis, expected_depth', [
+    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 90),
+
 ])
-def test_get_constrained_baro_real(raw_df, fname, column, expected_depth):
+def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, expected_depth):
     """
-    Test the constrained baro with real data
+    Test the constrained baro with acceleration data
     """
-    df = get_constrained_baro_depth(raw_df, baro=column)
+    df = get_constrained_baro_depth(raw_df, baro=column, acc_axis=acc_axis)
     delta_d = abs(df[column].max() - df[column].min())
     assert pytest.approx(delta_d, abs=3) == expected_depth
-
-
-@pytest.mark.parametrize('fname', ['hard_surface_hard_stop.csv'])
-def test_start_from_depth(raw_df):
-    from scipy.signal import argrelextrema
-    import numpy as np
-
-    raw_df = raw_df.set_index('time')
-    depth = get_depth_from_acceleration(raw_df)
-    peaks = argrelextrema(depth['Y-Axis'].values, np.greater)[0]
-    valleys = argrelextrema(depth['Y-Axis'].values, np.less)[0]
-
-    import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(2)
-    ax1 = axes[0]
-    ax1.plot(depth['Y-Axis'])
-    ax1.plot(depth.index[peaks], depth['Y-Axis'].iloc[peaks], '.')
-    ax1.plot(depth.index[valleys], depth['Y-Axis'].iloc[valleys], '.')
-
-    ax2 = axes[1]
-    ax2.plot(raw_df['Y-Axis'])
-    for p in peaks:
-        ax2.axvline(raw_df.index[p], color='green')
-    for v in valleys:
-        if v > peaks[-1]:
-            ax2.axvline(raw_df.index[v], color='red')
-    plt.show()

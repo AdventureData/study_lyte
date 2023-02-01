@@ -5,7 +5,8 @@ from scipy.signal import argrelextrema
 
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
-from .detect import get_acceleration_stop, get_acceleration_start
+from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley
+from .plotting import plot_ts
 
 
 @time_series
@@ -41,7 +42,7 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
     for i, axis in enumerate(acceleration_columns):
         # Integrate acceleration to velocity
         v = cumtrapz(acc[axis].values, acc.index, initial=0)
-        # Integrate velocity to postion
+        # Integrate velocity to position
         position_vec[axis] = cumtrapz(v, acc.index, initial=0)
 
     position_df = pd.DataFrame.from_dict(position_vec)
@@ -101,26 +102,39 @@ def get_fitted_depth(df: pd.DataFrame, column='depth', poly_deg=5) -> pd.DataFra
 def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     """
     The Barometer depth is often stretched. Use the start and stop of the
-    Accelerometer to constrain the peaks of the barometer
+    Accelerometer to constrain the peak/valley of the barometer, then rescale
+    it by the tails
     """
 
     start = get_acceleration_start(df[[acc_axis]])
     stop = get_acceleration_stop(df[[acc_axis]])
     mid = int((stop + start) / 2)
+    top = first_peak(df[baro], default_index=start, height=0.3, distance=5)
 
-    # Find peaks and valleys of barometer and select the closest to midpoint
-    peaks = argrelextrema(df[baro].iloc[:mid].values, np.greater)[0]
-    top = peaks[(np.abs(peaks - mid)).argmin()]
+    # Find valleys after, select closest to midpoint
+    valley_material = df[baro].iloc[top:].values
+    default = np.where(valley_material == valley_material.min())[0][0]
+    bottom = nearest_valley(df[baro].iloc[top:].values, mid-top, default_index=default)
+    bottom += top
 
-    # Find valleys after Peak, select closest to midpoint
-    valleys = argrelextrema(df[baro].iloc[top:].values, np.less)[0]
-    valleys = valleys + top
-    bottom = valleys[(np.abs(valleys - mid)).argmin()]
+    # Rescale
+    top_mean = df[baro].iloc[:top].mean()
+    if bottom == stop or bottom >= len(df.index)-1:
+        bot_mean_idx = bottom
+    else:
+        bot_mean_idx = bottom + 1
+
+    bottom_mean = df[baro].iloc[bot_mean_idx:].mean()
+    delta_new = top_mean - bottom_mean
+    delta_old = df[baro].iloc[top] - df[baro].iloc[bottom]
 
     depth_values = df[baro].iloc[top:bottom+1].values
     baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
+    result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
+
     # zero it out
     result = result.set_index('time')
+    result[baro] = result[baro] - result[baro].iloc[0]
 
     return result
