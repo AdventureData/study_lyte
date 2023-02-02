@@ -25,24 +25,29 @@ class EventStyle(Enum):
         return self.value[-1]
 
 
-def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None):
+def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0):
     if ax is None:
         fig, ax = plt.subplots(1)
+        ax.grid(True)
     n_samples = len(data)
-    if n_samples < 1000:
+    if n_samples < 100:
         mark = 'o--'
     else:
         mark = '-'
 
     if time_data is not None:
-        ax.plot(time_data, data, mark)
+        ax.plot(time_data, data, mark, alpha=alpha)
     else:
-        ax.plot(data, mark)
+        ax.plot(data, mark, alpha=alpha)
 
     if events is not None:
         for name, event_idx in events:
             s = EventStyle.from_name(name)
-            ax.axvline(event_idx, color=s.color, linestyle=s.linestyle, label=name)
+            if time_data is not None:
+                v = time_data[event_idx]
+            else:
+                v = event_idx
+            ax.axvline(v, color=s.color, linestyle=s.linestyle, label=name)
 
     if features is not None:
         ydata = [data[f] for f in features]
@@ -53,4 +58,5 @@ def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None
 
     if show:
         plt.show()
+
     return ax

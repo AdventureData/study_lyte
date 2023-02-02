@@ -4,8 +4,8 @@ import numpy as np
 
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
-from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley
-
+from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley, nearest_peak
+from .plotting import plot_ts
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis: float = 0.01) -> pd.DataFrame:
@@ -103,30 +103,32 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     Accelerometer to constrain the peak/valley of the barometer, then rescale
     it by the tails
     """
-
-    start = get_acceleration_start(df[[acc_axis]])
+    # Hold a little higher reqs for start when rescaling the baro
+    start = get_acceleration_start(df[[acc_axis]], threshold=0.01, max_threshold=0.03)
     stop = get_acceleration_stop(df[[acc_axis]])
     mid = int((stop + start) / 2)
-    top = first_peak(df[baro], default_index=start, height=0.3, distance=5)
+    top = nearest_peak(df[baro].values, start, default_index=start, height=0.3, distance=100)
 
     # Find valleys after, select closest to midpoint
-    valley_material = df[baro].iloc[top:].values
-    default = np.where(valley_material == valley_material.min())[0][0]
-    bottom = nearest_valley(df[baro].iloc[top:].values, mid-top, default_index=default)
+    bottom = nearest_valley(df[baro].iloc[top:].values, ((stop+mid)/2)-top, default_index=stop-top)
     bottom += top
 
     # Rescale
-    top_mean = df[baro].iloc[:top].mean()
-    if bottom == stop or bottom >= len(df.index)-1:
+    top_mean = np.nanmedian(df[baro].iloc[:top+1])
+    if bottom == stop:
         bot_mean_idx = bottom
-    else:
-        bot_mean_idx = bottom + 1
 
-    bottom_mean = df[baro].iloc[bot_mean_idx:].mean()
+    elif bottom >= len(df.index) - 1:
+        bot_mean_idx = len(df.index) - 1
+
+    else:
+        bot_mean_idx = bottom - 1
+
+    bottom_mean = np.nanmedian(df[baro].iloc[bot_mean_idx:])
     delta_new = top_mean - bottom_mean
     delta_old = df[baro].iloc[top] - df[baro].iloc[bottom]
 
-    depth_values = df[baro].iloc[top:bottom+1].values
+    depth_values = df[baro].iloc[top:bottom + 1].values
     baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
     result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
@@ -134,4 +136,18 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     # zero it out
     result = result.set_index('time')
     result[baro] = result[baro] - result[baro].iloc[0]
+    df[baro] = df[baro] - df[baro].max()
+
+    # acc_depth = get_depth_from_acceleration(df)
+    #
+    # ax = plot_ts(df[baro].values,
+    #              time_data=df.index,
+    #              events=[('start', start), ('stop', stop)],
+    #              features=[top, bottom],
+    #              show=False,)
+    #ax = plot_ts(result[baro].values, time_data=result.index, ax=ax, show=False)
+    #ax2 = ax.twinx()
+    #ax2 = plot_ts(df[acc_axis].values, time_data=df.index, ax=ax2, alpha=0.3, show=False)
+    #ax = plot_ts(acc_depth[acc_axis]*100, ax=ax)
+
     return result
