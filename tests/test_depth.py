@@ -90,12 +90,14 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected)
 
 
 @pytest.mark.parametrize('fname, column, acc_axis, expected_depth', [
-    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 80),
-    #('baro_w_bench.csv', 'filtereddepth', 'Y-Axis', 43),
-    #('baro_w_tails.csv', 'filtereddepth', 'Y-Axis', 57),
-    #('smooth.csv', 'filtereddepth', 'Y-Axis', 65),
-    #('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 65),
-    #('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 55),
+    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 90),
+    ('baro_w_bench.csv', 'filtereddepth', 'Y-Axis', 43),
+    ('baro_w_tails.csv', 'filtereddepth', 'Y-Axis', 57),
+    ('smooth.csv', 'filtereddepth', 'Y-Axis', 65),
+    ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 65),
+    ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 55),
+    ('pilots.csv', 'depth', 'Y-Axis', 143),
+
 ])
 def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, expected_depth):
     """
