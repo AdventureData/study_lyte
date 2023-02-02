@@ -1,4 +1,28 @@
 import matplotlib.pyplot as plt
+from enum import Enum
+
+
+class EventStyle(Enum):
+    START = 'g', '--'
+    STOP = 'r', '--'
+    UNKNOWN = 'k', '--'
+
+    @classmethod
+    def from_name(cls, name):
+        result = cls.UNKNOWN
+        for e in cls:
+            if e.name == name.upper():
+                result = e
+                break
+        return result
+
+    @property
+    def color(self):
+        return self.value[0]
+
+    @property
+    def linestyle(self):
+        return self.value[-1]
 
 
 def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None):
@@ -17,7 +41,9 @@ def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None
 
     if events is not None:
         for name, event_idx in events:
-            ax.axvline(event_idx, label=name)
+            s = EventStyle.from_name(name)
+            ax.axvline(event_idx, color=s.color, linestyle=s.linestyle, label=name)
+
     if features is not None:
         ydata = [data[f] for f in features]
         if time_data is not None:

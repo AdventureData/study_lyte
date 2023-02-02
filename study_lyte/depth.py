@@ -1,12 +1,10 @@
 import pandas as pd
 from scipy.integrate import cumtrapz
 import numpy as np
-from scipy.signal import argrelextrema
 
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
 from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley
-from .plotting import plot_ts
 
 
 @time_series
@@ -136,5 +134,4 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     # zero it out
     result = result.set_index('time')
     result[baro] = result[baro] - result[baro].iloc[0]
-
     return result

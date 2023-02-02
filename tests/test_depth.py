@@ -72,11 +72,11 @@ def test_get_fitted_depth(unfiltered_baro):
 
 @pytest.mark.parametrize('depth_data, acc_data, start, stop, expected', [
     # Simple example where peak/valley is beyond start/stop
-    ([1.0, 1.2, 0.9, 0.75, 0.5, 0.25, 0.1, -0.2, 0], [-1, -1, -1, 1, 0, -2, -1, -1, -1], 2, 6, 1.0),
-    # Confirm avg of tails and rescale conveniently set to 1.
-    ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -1, 1.5, -1, -1,  -1, -1], 3, 5., 1.0),
+    ([1.0, 1.2, 0.9, 0.75, 0.5, 0.25, 0.1, -0.2, 0], [-1, -1, -1, 1, 0, -2, -1, -1, -1], 2, 5, 1.0),
+    # Confirm avg of tails and rescale
+    ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -1, 1.5, -1, -1,  -1, -1], 3, 6., 1.16),
     # Example with no peak valley found
-    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -1, 1.5, -1, -1], 1, 3., 2)
+    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -1, 1.5, -1, -1], 1, 4., 2)
 
 ])
 def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected):
