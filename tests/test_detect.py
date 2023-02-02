@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 from os.path import join
 
-from study_lyte.depth import get_depth_from_acceleration
-
 
 @pytest.fixture(scope='session')
 def messy_acc(data_dir):
@@ -66,14 +64,15 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, -0.01, 3),
-    # Test a no detection returns the last index
+    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, 0.01, 3),
+    # Test no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 
 ])
 def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
-    idx = get_acceleration_stop(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold)
+    idx = get_acceleration_stop(df['acceleration'], fractional_basis=fractional_basis, height=threshold)
+
     assert idx == expected
 
 
@@ -82,14 +81,11 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('bogus.csv', 'Y-Axis', 32112),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 140),
-    ('delayed_acceleration.csv', 'Y-Axis', 271)
-
+    ('soft_acceleration.csv', 'Y-Axis', 131),
+    ('delayed_acceleration.csv', 'Y-Axis', 252)
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
     idx = get_acceleration_stop(raw_df[column])
-    df = get_depth_from_acceleration(raw_df)
-
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.03 * len(raw_df.index))) == stop_idx
 
@@ -100,10 +96,10 @@ def test_get_acceleration_stop_time_index(raw_df):
     Confirm the result is independent of the time index being set or not
     """
     # Without time index
-    idx1 = get_acceleration_stop(raw_df['Y-Axis'], fractional_basis=0.01, threshold=-0.001)
+    idx1 = get_acceleration_stop(raw_df['Y-Axis'], fractional_basis=0.01)
     # with time index
     df = raw_df.set_index('time')
-    idx2 = get_acceleration_stop(df['Y-Axis'], fractional_basis=0.01, threshold=-0.001)
+    idx2 = get_acceleration_stop(df['Y-Axis'], fractional_basis=0.01)
 
     assert idx1 == idx2
 

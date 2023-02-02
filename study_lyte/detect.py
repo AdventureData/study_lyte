@@ -3,7 +3,7 @@ from scipy.signal import find_peaks, argrelextrema
 
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
-
+from .plotting import plot_ts
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """
@@ -118,16 +118,15 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.02, max_threshold=0.2):
+def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, distance=10):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
     Args:
         acceleration:pandas series of acceleration data
         fractional_basis: fraction of the number of points to average over for bias adjustment
-        threshold: Float in g's for
-        max_threshold: Max value between the max of the signal and the end to be considered for stop criteria
-
+        height: Float in g's for minimum peak findable
+        distance: Minimum distance between peaks
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
@@ -135,25 +134,14 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, threshold=-0.02, 
     acceleration = acceleration[~np.isnan(acceleration)]
 
     # remove gravity
-    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='backward')
-    ind = first_peak(-1 * accel_neutral, default_index=0, height=0.3, distance=10)
-
-    # Isolate the area of the signal known to have the stop
-    sig = accel_neutral[ind:]
-
-    # Use the number of points variably
-    n_points = int(0.01 * len(sig))
-    if n_points > 200:
-        n_points = 200
-
-    event = get_signal_event(sig, threshold=threshold, max_threshold=max_threshold,
-                             n_points=n_points,
-                             search_direction='backward')
-
-    if event == 0:
-        acceleration_stop = len(acceleration) - 1
+    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis,
+                                               direction='forward')
+    # Find the first real negative peak starting at the end
+    ind = first_peak(-1 * accel_neutral[::-1], default_index=0, height=height, distance=distance)
+    if ind == 0:
+        acceleration_stop = len(accel_neutral) - 1
     else:
-        acceleration_stop = ind + event
+        acceleration_stop = len(accel_neutral) - ind + 1
 
     return acceleration_stop
 
