@@ -3,7 +3,7 @@ from scipy.signal import find_peaks, argrelextrema
 
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
 from .decorators import directional
-
+from .plotting import  plot_ts
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """
@@ -171,14 +171,16 @@ def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.05):
     Return:
         surface: Integer index of the estimated snow surface
     """
-    ambient = ambient.values
-    active = active.values
+    ambient = ambient.rolling(20).mean().values
+    active = active.rolling(20).mean().values
 
     amb_norm = get_normalized_at_border(ambient, fractional_basis=fractional_basis)
     act_norm = get_normalized_at_border(active, fractional_basis=fractional_basis)
-    diff = abs(act_norm - amb_norm)
+    diff = amb_norm - act_norm
+    gradient = np.sign(diff)
     surface = get_signal_event(diff, threshold=threshold, search_direction='backward')
-
+    ax = plot_ts(diff, events=[('surface', surface)], show=True)
+    ax = plot_ts(gradient, ax=ax, show=True)
     return surface
 
 

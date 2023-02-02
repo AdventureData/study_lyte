@@ -5,6 +5,8 @@ from enum import Enum
 class EventStyle(Enum):
     START = 'g', '--'
     STOP = 'r', '--'
+    SURFACE = 'lightsteelblue', '--'
+
     UNKNOWN = 'k', '--'
 
     @classmethod

@@ -122,6 +122,8 @@ def test_get_nir_surface(ambient, active, fractional_basis, threshold, expected)
 
 @pytest.mark.parametrize('fname, surface_idx', [
     ('bogus.csv', 20385),
+    ('pilots.csv', 9496),
+
 ])
 def test_get_nir_surface_real(raw_df, fname, surface_idx):
     """
