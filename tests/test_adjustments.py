@@ -1,5 +1,5 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
-                                    merge_time_series, remove_ambient)
+                                    merge_time_series, remove_ambient, apply_calibration)
 import pytest
 import pandas as pd
 import numpy as np
@@ -35,6 +35,7 @@ def test_get_neutral_bias_at_border(data, fractional_basis, direction, zero_bias
     df = pd.DataFrame({'data': np.array(data)})
     result = get_neutral_bias_at_border(df['data'], fractional_basis=fractional_basis, direction=direction)
     assert result.iloc[zero_bias_idx] == 0
+
 
 @pytest.mark.parametrize('data, fractional_basis, direction, ideal_norm_index', [
     # Test the directionality
@@ -78,14 +79,26 @@ def test_merge_time_series(data_list, expected):
 
     pd.testing.assert_frame_equal(result[exp_cols], expected_df)
 
+
 @pytest.mark.parametrize('active, ambient, expected', [
     ([2, 2, 4, 10], [1, 1, 0, 0], [0, 0, 4, 10])
 ])
 def test_remove_ambient(active, ambient, expected):
     """
-    Test
+    Test that subtraction removes the ambient but re-scales back to the
+    original values
     """
     active = np.array(active)
     ambient = np.array(ambient)
     result = remove_ambient(active, ambient)
+    np.testing.assert_equal(result, expected)
+
+
+@pytest.mark.parametrize('data, coefficients, expected', [
+    ([1, 2, 3, 4], [2, 0], [2, 4, 6, 8])
+])
+def test_apply_calibration(data, coefficients, expected):
+    data = np.array(data)
+    expected = np.array(expected)
+    result = apply_calibration(data, coefficients)
     np.testing.assert_equal(result, expected)

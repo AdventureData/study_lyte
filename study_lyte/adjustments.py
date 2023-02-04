@@ -88,3 +88,18 @@ def remove_ambient(active, ambient):
     basis = get_directional_mean(active)
     clean = (norm_active - norm_ambient) * basis
     return clean
+
+
+def apply_calibration(series, coefficients, minimum=None, maximum=None):
+    """
+    Apply any calibration using poly1d
+    """
+    poly = np.poly1d(coefficients)
+    result = poly(series)
+
+    if maximum is not None:
+        result[result > maximum] = maximum
+    if minimum is not None:
+        result[result < minimum] = minimum
+
+    return result
