@@ -1,3 +1,4 @@
+from study_lyte.adjustments import remove_ambient
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface
 from .decorators import time_series
 import pandas as pd
@@ -38,7 +39,8 @@ def crop_to_snow(df: pd.DataFrame, active_col='Sensor2', ambient_col='Sensor3', 
     Returns:
         cropped: pd.Dataframe cropped to the time period where a surface was detected to the end
     """
-    surface = get_nir_surface(df[ambient_col], df[active_col], **kwargs)
+    df['nir'] = remove_ambient( df[active_col],  df[ambient_col])
+    surface = get_nir_surface(df['nir'], **kwargs)
     cropped = df.iloc[surface:]
     return cropped
 

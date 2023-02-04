@@ -111,13 +111,13 @@ def test_get_acceleration_stop_time_index(raw_df):
     # no ambient change ( dark or super cloudy)
     ([100, 100, 100, 100], [1000, 1100, 2000, 3000], 0.25, 0.01, 1),
     # 1/2 split using defaults
-    #([1, 1, 2, 2], [2, 2, 1, 1], 0.01, 0.1, 2)
+    ([2, 2, 1, 1], [2, 2, 2, 2], 0.01, 0.1, 2)
 ])
 def test_get_nir_surface(ambient, active, fractional_basis, threshold, expected):
     df = pd.DataFrame({'ambient': np.array(ambient),
                        'active': np.array(active)})
-
-    idx = get_nir_surface(df['ambient'], df['active'], fractional_basis=fractional_basis, threshold=threshold)
+    clean = remove_ambient(df['active'], df['ambient'])
+    idx = get_nir_surface(clean, fractional_basis=fractional_basis, threshold=threshold)
     assert idx == expected
 
 
