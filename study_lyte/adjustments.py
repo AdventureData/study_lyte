@@ -77,3 +77,14 @@ def merge_time_series(df_list):
     # interpolate the nan's
     result = result.interpolate(method='index')
     return result
+
+
+def remove_ambient(active, ambient):
+    """
+    Attempts to remove the ambient signal from the active signal
+    """
+    norm_ambient = get_normalized_at_border(ambient)
+    norm_active = get_normalized_at_border(active)
+    basis = get_directional_mean(active)
+    clean = (norm_active - norm_ambient) * basis
+    return clean

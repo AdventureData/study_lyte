@@ -1,5 +1,5 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
-                                    merge_time_series)
+                                    merge_time_series, remove_ambient)
 import pytest
 import pandas as pd
 import numpy as np
@@ -77,3 +77,15 @@ def test_merge_time_series(data_list, expected):
     exp_cols = expected_df.columns
 
     pd.testing.assert_frame_equal(result[exp_cols], expected_df)
+
+@pytest.mark.parametrize('active, ambient, expected', [
+    ([2, 2, 4, 10], [1, 1, 0, 0], [0, 0, 4, 10])
+])
+def test_remove_ambient(active, ambient, expected):
+    """
+    Test
+    """
+    active = np.array(active)
+    ambient = np.array(ambient)
+    result = remove_ambient(active, ambient)
+    np.testing.assert_equal(result, expected)
