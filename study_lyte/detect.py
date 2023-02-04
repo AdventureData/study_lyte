@@ -1,9 +1,8 @@
 import numpy as np
 from scipy.signal import find_peaks, argrelextrema
 
-from .adjustments import get_neutral_bias_at_border, get_normalized_at_border
+from .adjustments import get_neutral_bias_at_border
 from .decorators import directional
-from .plotting import  plot_ts
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """
@@ -155,7 +154,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, dista
     return acceleration_stop
 
 
-def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.05):
+def get_nir_surface(clean_active, fractional_basis=0.01, threshold=0.15):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,
@@ -163,24 +162,15 @@ def get_nir_surface(ambient, active, fractional_basis=0.01, threshold=0.05):
     difference of the two signals should be the snow surface.
 
     Args:
-        ambient: Numpy Array or pandas Series of the ambient NIR signal
-        active: Numpy Array or pandas Series of the active NIR signal
+        clean_active: Numpy Array or pandas Series of the clean NIR signal
         fractional_basis: Float of beginning data to use as the normalization
         threshold: Float threshold value for meeting the snow surface event
 
     Return:
         surface: Integer index of the estimated snow surface
     """
-    ambient = ambient.rolling(20).mean().values
-    active = active.rolling(20).mean().values
-
-    amb_norm = get_normalized_at_border(ambient, fractional_basis=fractional_basis)
-    act_norm = get_normalized_at_border(active, fractional_basis=fractional_basis)
-    diff = amb_norm - act_norm
-    gradient = np.sign(diff)
-    surface = get_signal_event(diff, threshold=threshold, search_direction='backward')
-    ax = plot_ts(diff, events=[('surface', surface)], show=True)
-    ax = plot_ts(gradient, ax=ax, show=True)
+    clean = clean_active / clean_active.max()
+    surface = get_signal_event(clean, search_direction='backward', threshold=threshold)
     return surface
 
 
