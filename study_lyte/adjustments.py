@@ -103,3 +103,29 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None):
         result[result < minimum] = minimum
 
     return result
+
+
+def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
+    """
+    Aggregate the dataframe by the new depth using whatever method
+    provided. Data in the new depth is considered to be the bottom of
+    the aggregation e.g. 10, 20 == 0-10, 11-20 etc
+    Depth data must be monotonic.
+    new_depth data much be coarser than current depth data
+    """
+    col = df_depth_col
+    result = pd.DataFrame(columns=df.columns)
+    result[col] = new_depth
+    cols = [c for c in df.columns if c != df_depth_col]
+    for i, d in enumerate(new_depth):
+        ind = df[col] <= d
+
+        if i == 0:
+            ind = ind & (df[col] >= df[col].iloc[0])
+        else:
+            ind = ind & (df[col] > new_depth[i - 1])
+        new_row = getattr(df[cols][ind], agg_method)()
+        new_row[col] = d
+        result[result[col] == d] = new_row
+
+    return result

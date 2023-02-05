@@ -1,5 +1,6 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
-                                    merge_time_series, remove_ambient, apply_calibration)
+                                    merge_time_series, remove_ambient, apply_calibration,
+                                    aggregate_by_depth)
 import pytest
 import pandas as pd
 import numpy as np
@@ -102,3 +103,18 @@ def test_apply_calibration(data, coefficients, expected):
     expected = np.array(expected)
     result = apply_calibration(data, coefficients)
     np.testing.assert_equal(result, expected)
+
+
+@pytest.mark.parametrize("data, depth, new_depth, agg_method, expected_data", [
+    ([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11])
+])
+def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
+    """
+    """
+    d = {'data': data, 'depth': depth}
+    df = pd.DataFrame.from_dict(d)
+    exp = {'data': expected_data, 'depth': new_depth}
+    expected = pd.DataFrame.from_dict(exp)
+    result = aggregate_by_depth(df, new_depth, agg_method=agg_method)
+
+    pd.testing.assert_frame_equal(result, expected, check_dtype=False)
