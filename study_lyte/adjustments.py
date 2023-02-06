@@ -113,19 +113,38 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     Depth data must be monotonic.
     new_depth data much be coarser than current depth data
     """
-    col = df_depth_col
+    if new_depth[-1] < 0:
+        surface_datum = True
+    else:
+        surface_datum = False
+    if df.index.name is not None:
+        df = df.reset_index()
+    dcol = df_depth_col
     result = pd.DataFrame(columns=df.columns)
-    result[col] = new_depth
-    cols = [c for c in df.columns if c != df_depth_col]
-    for i, d in enumerate(new_depth):
-        ind = df[col] <= d
-
+    cols = [c for c in df.columns if c != dcol]
+    for i, d2 in enumerate(new_depth):
+        # Find previous depth value for comparison
         if i == 0:
-            ind = ind & (df[col] >= df[col].iloc[0])
+            d1 = df[dcol].iloc[0]
         else:
-            ind = ind & (df[col] > new_depth[i - 1])
-        new_row = getattr(df[cols][ind], agg_method)()
-        new_row[col] = d
-        result[result[col] == d] = new_row
+            d1 = new_depth[i-1]
+
+        # Manage negative depths
+        if surface_datum:
+            ind = df[dcol] >= d2
+            if i == 0:
+                ind = ind & (df[dcol] <= d1)
+            else:
+                ind = ind & (df[dcol] < d1)
+        else:
+            ind = df[dcol] <= d2
+            if i == 0:
+                ind = ind & (df[dcol] >= d1)
+            else:
+                ind = ind & (df[dcol] > d1)
+        new_row = getattr(df[cols][ind], agg_method)(axis=0)
+        new_row.name = i
+        new_row[dcol] = d2
+        result = result.append(new_row)
 
     return result

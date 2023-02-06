@@ -25,7 +25,7 @@ def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs={}, stop_
 
 
 @time_series
-def crop_to_snow(df: pd.DataFrame, active_col='Sensor2', ambient_col='Sensor3', **kwargs) -> pd.DataFrame:
+def crop_to_snow(df: pd.DataFrame, active_col='Sensor3', ambient_col='Sensor2', **kwargs) -> pd.DataFrame:
     """
     Crop the dataset to only the data in the snow as seen by the
     NIR sensors
@@ -39,7 +39,7 @@ def crop_to_snow(df: pd.DataFrame, active_col='Sensor2', ambient_col='Sensor3', 
     Returns:
         cropped: pd.Dataframe cropped to the time period where a surface was detected to the end
     """
-    df['nir'] = remove_ambient( df[active_col],  df[ambient_col])
+    df['nir'] = remove_ambient(df[active_col],  df[ambient_col])
     surface = get_nir_surface(df['nir'], **kwargs)
     cropped = df.iloc[surface:]
     return cropped

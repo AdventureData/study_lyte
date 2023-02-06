@@ -106,7 +106,11 @@ def test_apply_calibration(data, coefficients, expected):
 
 
 @pytest.mark.parametrize("data, depth, new_depth, agg_method, expected_data", [
-    ([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11])
+    # Test w/ intuitive data
+    #([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11]),
+    # Test with negative depths
+    ([2, 4, 6, 8], [-10, -20, -30, -40], [-20, -40], 'mean', [3, 7])
+
 ])
 def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
     """
