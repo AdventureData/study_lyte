@@ -81,17 +81,21 @@ def test_merge_time_series(data_list, expected):
     pd.testing.assert_frame_equal(result[exp_cols], expected_df)
 
 
-@pytest.mark.parametrize('active, ambient, expected', [
-    ([2, 2, 4, 10], [1, 1, 0, 0], [0, 0, 4, 10])
+@pytest.mark.parametrize('active, ambient, min_ambient_range, expected', [
+    # Test normal situation with ambient present
+    ([200, 200, 400, 1000], [200, 200, 0, 0], 100, [0, 0, 400, 1000]),
+    # Test no cleaning required
+    ([200, 200, 400, 400], [210, 210, 200, 200], 90, [200, 200, 400, 400])
+
 ])
-def test_remove_ambient(active, ambient, expected):
+def test_remove_ambient(active, ambient, min_ambient_range, expected):
     """
     Test that subtraction removes the ambient but re-scales back to the
     original values
     """
     active = np.array(active)
     ambient = np.array(ambient)
-    result = remove_ambient(active, ambient)
+    result = remove_ambient(active, ambient, min_ambient_range=100)
     np.testing.assert_equal(result, expected)
 
 

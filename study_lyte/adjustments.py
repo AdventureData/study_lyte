@@ -79,14 +79,17 @@ def merge_time_series(df_list):
     return result
 
 
-def remove_ambient(active, ambient):
+def remove_ambient(active, ambient, min_ambient_range=100):
     """
     Attempts to remove the ambient signal from the active signal
     """
-    norm_ambient = get_normalized_at_border(ambient)
-    norm_active = get_normalized_at_border(active)
-    basis = get_directional_mean(active)
-    clean = (norm_active - norm_ambient) * basis
+    if (ambient.max() - ambient.min()) > min_ambient_range:
+        norm_ambient = get_normalized_at_border(ambient)
+        norm_active = get_normalized_at_border(active)
+        basis = get_directional_mean(active)
+        clean = (norm_active - norm_ambient) * basis
+    else:
+        clean = active
     return clean
 
 
