@@ -154,7 +154,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, dista
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, fractional_basis=0.01, threshold=0.15):
+def get_nir_surface(clean_active, fractional_basis=0.01, threshold=0.01, max_threshold=0.15):
     """
     Using the active and ambient NIR, estimate the index at when the probe was in the snow.
     The ambient signal is expected to receive less and less light as it enters into the snowpack,
@@ -169,8 +169,10 @@ def get_nir_surface(clean_active, fractional_basis=0.01, threshold=0.15):
     Return:
         surface: Integer index of the estimated snow surface
     """
-    clean = clean_active / clean_active.max()
-    surface = get_signal_event(clean, search_direction='backward', threshold=threshold)
+    n_points = 1#int(0.001 * len(clean_active))
+    print(n_points)
+    surface = get_signal_event(clean_active, search_direction='backward', threshold=threshold,
+                               max_threshold=max_threshold, n_points=n_points)
     return surface
 
 

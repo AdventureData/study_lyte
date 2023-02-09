@@ -112,6 +112,8 @@ def test_get_acceleration_stop_time_index(raw_df):
     ([100, 100, 100, 100], [1000, 1100, 2000, 3000], 0.25, 0.01, 1),
     # 1/2 split using defaults
     ([2, 2, 1, 1], [2, 2, 2, 2], 0.01, 0.1, 2)
+    # Test small bits of stuff in the begining
+
 ])
 def test_get_nir_surface(ambient, active, fractional_basis, threshold, expected):
     df = pd.DataFrame({'ambient': np.array(ambient),
