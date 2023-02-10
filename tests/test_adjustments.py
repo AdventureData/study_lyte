@@ -1,10 +1,21 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
                                     merge_time_series, remove_ambient, apply_calibration,
-                                    aggregate_by_depth)
+                                    aggregate_by_depth, get_index_from_fraction)
 import pytest
 import pandas as pd
 import numpy as np
 
+
+@pytest.mark.parametrize("n_samples, fraction, expected", [
+    (10, 0.5, 5),
+    (5, 0.95, 4),
+    (10, 0, 1),
+    (10, 1, 9),
+
+])
+def test_get_index_from_fraction(n_samples, fraction, expected):
+    idx = get_index_from_fraction(n_samples, fraction)
+    assert idx == expected
 
 @pytest.mark.parametrize('data, fractional_basis, direction, expected', [
     # Test the directionality
@@ -42,6 +53,8 @@ def test_get_neutral_bias_at_border(data, fractional_basis, direction, zero_bias
     # Test the directionality
     ([1, 1, 2, 2], 0.5, 'forward', 0),
     ([1, 1, 2, 2], 0.5, 'backward', -1),
+    ([0, 0, 2, 2], 0.5, 'backward', -1),
+
 ])
 def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_index):
     """

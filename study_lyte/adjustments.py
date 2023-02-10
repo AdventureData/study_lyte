@@ -2,11 +2,22 @@ import numpy as np
 import pandas as pd
 
 
+def get_index_from_fraction(n_samples, fraction):
+    """
+    Return the nearest index from a fraction of the
+    number of samples. Never returns 0.
+    """
+    idx = int(fraction * n_samples) or 1
+    if idx == n_samples:
+        idx = n_samples - 1
+    return idx
+
+
 def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, direction='forward'):
     """
     Calculates the mean from a collection of points at the beginning or end of a dataframe
     """
-    idx = int(fractional_basis * len(arr)) or 1
+    idx = get_index_from_fraction(len(arr), fractional_basis)
     if direction == 'forward':
         avg = np.nanmean(arr[:idx])
     elif direction == 'backward':
@@ -23,8 +34,9 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.01
     e.g. 1% of the data is averaged and subtracted.
 
     Args:
-        df: pandas dataframe of data with a known bias
+        series: pandas series of data with a known bias
         fractional_basis: Fraction of data to use to estimate the bias on start
+        direction: forward to get a neutral bias at the start, backwards for the end.
 
     Returns:
         bias_adj: bias adjusted data to near zero
@@ -40,20 +52,23 @@ def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, 
     e.g. the data was normalized by the mean of 1% of the beginning of the data.
 
     Args:
-        df: pandas series of data with a known bias
+        series: pandas series of data with a known bias
         fractional_basis: Fraction of data to use to estimate the bias on start
-
+        direction: Forward to norm the border at the start, backwards to norm at the end.
     Returns:
         border_norm: data by an average from one of the borders to nearly 1
     """
     border_avg = get_directional_mean(series, fractional_basis=fractional_basis, direction=direction)
-    border_norm = series / border_avg
+    if border_avg != 0:
+        border_norm = series / border_avg
+    else:
+        border_norm = series
     return border_norm
 
 
 def merge_time_series(df_list):
     """
-    Merges the other dataframes into the primary datafrane
+    Merges the other dataframes into the primary dataframe
     which set the resolution for the other dataframes. The final
     result is interpolated to eliminate nans.
 
