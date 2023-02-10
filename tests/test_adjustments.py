@@ -1,6 +1,6 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
                                     merge_time_series, remove_ambient, apply_calibration,
-                                    aggregate_by_depth, get_index_from_fraction)
+                                    aggregate_by_depth, get_points_from_fraction)
 import pytest
 import pandas as pd
 import numpy as np
@@ -13,8 +13,8 @@ import numpy as np
     (10, 1, 9),
 
 ])
-def test_get_index_from_fraction(n_samples, fraction, expected):
-    idx = get_index_from_fraction(n_samples, fraction)
+def test_get_points_from_fraction(n_samples, fraction, expected):
+    idx = get_points_from_fraction(n_samples, fraction)
     assert idx == expected
 
 @pytest.mark.parametrize('data, fractional_basis, direction, expected', [

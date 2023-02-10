@@ -105,21 +105,17 @@ def test_get_acceleration_stop_time_index(raw_df):
     assert idx1 == idx2
 
 
-@pytest.mark.parametrize("ambient, active, fractional_basis, threshold, expected", [
+@pytest.mark.parametrize("active, threshold, max_threshold, expected", [
     # Typical bright->dark ambient
-    ([3000, 3000, 1000, 100], [2500, 2600, 3000, 4000], 0.25, 0.01, 1),
+    ([0, 200, 3000, 4000], 0.01, 0.1, 1),
     # no ambient change ( dark or super cloudy)
-    ([100, 100, 100, 100], [1000, 1100, 2000, 3000], 0.25, 0.01, 1),
+    ([1000, 1100, 2000, 3000], .01, 0.2,  1),
     # 1/2 split using defaults
-    ([2, 2, 1, 1], [2, 2, 2, 2], 0.01, 0.1, 2)
-    # Test small bits of stuff in the begining
+    ([0, 1, 3, 5], 0.5, 0.7, 2)
 
 ])
-def test_get_nir_surface(ambient, active, fractional_basis, threshold, expected):
-    df = pd.DataFrame({'ambient': np.array(ambient),
-                       'active': np.array(active)})
-    clean = remove_ambient(df['active'], df['ambient'])
-    idx = get_nir_surface(clean, fractional_basis=fractional_basis, threshold=threshold)
+def test_get_nir_surface(active, threshold, max_threshold, expected):
+    idx = get_nir_surface(np.array(active), threshold=threshold, max_threshold=max_threshold)
     assert idx == expected
 
 

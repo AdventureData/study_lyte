@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 
 
-def get_index_from_fraction(n_samples, fraction):
+def get_points_from_fraction(n_samples, fraction):
     """
-    Return the nearest index from a fraction of the
+    Return the nearest whole int from a fraction of the
     number of samples. Never returns 0.
     """
     idx = int(fraction * n_samples) or 1
@@ -17,7 +17,7 @@ def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, directio
     """
     Calculates the mean from a collection of points at the beginning or end of a dataframe
     """
-    idx = get_index_from_fraction(len(arr), fractional_basis)
+    idx = get_points_from_fraction(len(arr), fractional_basis)
     if direction == 'forward':
         avg = np.nanmean(arr[:idx])
     elif direction == 'backward':

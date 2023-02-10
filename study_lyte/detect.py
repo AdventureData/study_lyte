@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.signal import find_peaks, argrelextrema
 
-from .adjustments import get_neutral_bias_at_border
+from .adjustments import get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction
 from .decorators import directional
+from .plotting import plot_ts
+
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """
@@ -25,6 +27,7 @@ def nearest_peak(arr, nearest_to_index, default_index=0, **find_peak_kwargs):
     else:
         nearest_val = default_index
     return nearest_val
+
 
 def nearest_valley(arr, nearest_to_index, default_index=1):
     """Find the nearest valley closest to a designated point"""
@@ -98,7 +101,6 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         event_idx = 0
     else:
         event_idx = ind[-1]
-
     return event_idx
 
 
@@ -119,9 +121,10 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     # Get the neutral signal between start and the max
     accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='forward')
     max_ind = first_peak(np.abs(accel_neutral), height=0.3, distance=10)
+    n_points = get_points_from_fraction(len(acceleration), 0.005)
 
     acceleration_start = get_signal_event(accel_neutral[0:max_ind+1], threshold=threshold, max_threshold=max_threshold,
-                                          n_points=int(0.005 * len(acceleration)),
+                                          n_points=n_points,
                                           search_direction='forward')
     return acceleration_start
 
@@ -154,25 +157,22 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, dista
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, fractional_basis=0.01, threshold=0.01, max_threshold=0.15):
+def get_nir_surface(clean_active, threshold=0.05, max_threshold=0.15):
     """
-    Using the active and ambient NIR, estimate the index at when the probe was in the snow.
-    The ambient signal is expected to receive less and less light as it enters into the snowpack,
-    whereas the active should receive more. This function calculates the first value of the
-    difference of the two signals should be the snow surface.
+    Using the cleaned active, estimate the index at when the probe was in the snow.
 
     Args:
         clean_active: Numpy Array or pandas Series of the clean NIR signal
-        fractional_basis: Float of beginning data to use as the normalization
-        threshold: Float threshold value for meeting the snow surface event
+        threshold: Float minimum relative percent change threshold value for a snow surface event
+        max_threshold: Float maximum relative percent change threshold value for a snow surface event
 
     Return:
         surface: Integer index of the estimated snow surface
     """
-    n_points = 1#int(0.001 * len(clean_active))
-    print(n_points)
-    surface = get_signal_event(clean_active, search_direction='backward', threshold=threshold,
-                               max_threshold=max_threshold, n_points=n_points)
+    clean_norm = clean_active / clean_active.max()
+    clean_norm = clean_norm - abs(clean_norm).min()
+    surface = get_signal_event(clean_norm, search_direction='forward', threshold=threshold,
+                               max_threshold=max_threshold)
     return surface
 
 
