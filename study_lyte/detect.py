@@ -101,6 +101,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         event_idx = 0
     else:
         event_idx = ind[-1]
+
     return event_idx
 
 
@@ -157,7 +158,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, dista
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=0.05, max_threshold=0.15):
+def get_nir_surface(clean_active, threshold=0.01, max_threshold=0.15):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 

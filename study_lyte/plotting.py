@@ -27,7 +27,7 @@ class EventStyle(Enum):
         return self.value[-1]
 
 
-def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0):
+def plot_ts(data, data_label=None, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0):
     if ax is None:
         fig, ax = plt.subplots(1)
         ax.grid(True)
@@ -38,9 +38,12 @@ def plot_ts(data, time_data=None, events=None, features=None, show=True, ax=None
         mark = '-'
 
     if time_data is not None:
-        ax.plot(time_data, data, mark, alpha=alpha)
+        ax.plot(time_data, data, mark, alpha=alpha, label=data_label)
     else:
-        ax.plot(data, mark, alpha=alpha)
+        ax.plot(data, mark, alpha=alpha, label=data_label)
+
+    if data_label is not None:
+        ax.legend()
 
     if events is not None:
         for name, event_idx in events:

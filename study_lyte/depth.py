@@ -112,7 +112,7 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     # Find valleys after, select closest to midpoint
     valley_search = df[baro].iloc[top:].values
     default_idx = np.argmin(valley_search)
-    bottom = nearest_valley(valley_search, default_idx, default_index=default_idx)
+    bottom = nearest_valley(valley_search, default_idx, default_index=int(2*(start+stop)/3))
     bottom += top
 
     # Rescale
@@ -140,16 +140,16 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     result[baro] = result[baro] - result[baro].iloc[0]
     df[baro] = df[baro] - df[baro].max()
 
-    #acc_depth = get_depth_from_acceleration(df)
+    acc_depth = get_depth_from_acceleration(df)
 
     #ax = plot_ts(df[baro].values,
-                 # time_data=df.index,
-                 # events=[('start', start), ('stop', stop)],
-                 # features=[top, bottom],
-                 # show=False)
-    #ax = plot_ts(result[baro].values, time_data=result.index, ax=ax, show=False)
+    #             time_data=df.index,
+    #             events=[('start', start), ('stop', stop)],
+    #             features=[top, bottom],
+    #             show=False, data_label='raw')
+    #ax = plot_ts(result[baro].values, data_label='adj', time_data=result.index, ax=ax, show=False)
     #ax2 = ax.twinx()
     #ax2 = plot_ts(df[acc_axis].values, time_data=df.index, ax=ax2, alpha=0.3, show=False)
-    #ax = plot_ts(acc_depth[acc_axis]*100, ax=ax)
-
+    #ax = plot_ts(acc_depth[acc_axis]*100, ax=ax, data_label='acc')
+    #ax.legend()
     return result
