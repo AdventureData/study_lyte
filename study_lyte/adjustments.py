@@ -140,6 +140,7 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     dcol = df_depth_col
     result = pd.DataFrame(columns=df.columns)
     cols = [c for c in df.columns if c != dcol]
+    new = []
     for i, d2 in enumerate(new_depth):
         # Find previous depth value for comparison
         if i == 0:
@@ -163,6 +164,6 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
         new_row = getattr(df[cols][ind], agg_method)(axis=0)
         new_row.name = i
         new_row[dcol] = d2
-        result = result.append(new_row)
-
+        new.append(new_row)
+    result = pd.DataFrame.from_records(new)
     return result
