@@ -16,7 +16,8 @@ Initial Development (2022-01-29)
 * Improved documentation
 
 
-0.3.0 (2023-02-17)
+
+0.4.0 (2023-02-17)
 --------------------------------
 
 * Improvements in Start, Stop detection, handling small bumps
