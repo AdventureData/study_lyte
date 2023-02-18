@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-import numpy as np
-from typing.io import TextIO
-=======
->>>>>>> 71d37af8cc290d8c27a4668c005a9882d422659e
 from typing import Tuple
 import pandas as pd
 import numpy as np
