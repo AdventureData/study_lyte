@@ -1,9 +1,9 @@
-from typing.io import TextIO
-from typing import Union
+from typing import Tuple
 import pandas as pd
+import numpy as np
 
 
-def read_csv(f: TextIO) -> Union[pd.DataFrame, dict]:
+def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
     """
     Reads any Lyte probe CSV and returns a dataframe
     and metadata dictionary from the header
@@ -36,6 +36,10 @@ def read_csv(f: TextIO) -> Union[pd.DataFrame, dict]:
         df = pd.read_csv(f, header=header_position)
         # Drop any columns written with the plain index
         df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
+        if 'time' not in df and 'SAMPLE RATE' in metadata:
+            sr = int(metadata['SAMPLE RATE'])
+            n = len(df)
+            df['time'] = np.linspace(0, n/sr, n)
 
         return df, metadata
 
