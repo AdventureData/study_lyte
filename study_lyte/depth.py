@@ -5,7 +5,7 @@ import numpy as np
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border
 from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley, nearest_peak
-from .plotting import plot_ts
+
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis: float = 0.01) -> pd.DataFrame:
@@ -138,18 +138,4 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     # zero it out
     result = result.set_index('time')
     result[baro] = result[baro] - result[baro].iloc[0]
-    df[baro] = df[baro] - df[baro].max()
-
-    acc_depth = get_depth_from_acceleration(df)
-
-    #ax = plot_ts(df[baro].values,
-    #             time_data=df.index,
-    #             events=[('start', start), ('stop', stop)],
-    #             features=[top, bottom],
-    #             show=False, data_label='raw')
-    #ax = plot_ts(result[baro].values, data_label='adj', time_data=result.index, ax=ax, show=False)
-    #ax2 = ax.twinx()
-    #ax2 = plot_ts(df[acc_axis].values, time_data=df.index, ax=ax2, alpha=0.3, show=False)
-    #ax = plot_ts(acc_depth[acc_axis]*100, ax=ax, data_label='acc')
-    #ax.legend()
     return result

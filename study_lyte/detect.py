@@ -3,7 +3,6 @@ from scipy.signal import find_peaks, argrelextrema
 
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction
 from .decorators import directional
-from .plotting import plot_ts
 
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
