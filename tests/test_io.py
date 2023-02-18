@@ -6,7 +6,7 @@ from pandas import DataFrame
 
 
 @pytest.mark.parametrize("f, expected_columns", [
-    ('hi_res.csv', ['Sensor1', 'Sensor2', 'Sensor3', 'acceleration', 'depth']),
+    ('hi_res.csv', ['Sensor1', 'Sensor2', 'Sensor3', 'acceleration', 'depth', 'time']),
     ('rad_app.csv', ['SAMPLE', 'SENSOR 1', 'SENSOR 2', 'SENSOR 3', 'SENSOR 4', 'DEPTH'])
 ])
 def test_read_csv_columns(data_dir, f, expected_columns):
@@ -22,7 +22,8 @@ def test_read_csv_columns(data_dir, f, expected_columns):
                     "radicl VERSION": "0.5.1",
                     "FIRMWARE REVISION": "1.46",
                     "HARDWARE REVISION": '1',
-                    "MODEL NUMBER": "3"}),
+                    "MODEL NUMBER": "3",
+                    "SAMPLE RATE": "16000"}),
     ('rad_app.csv', {"LOCATION": "43.566052, -116.12157452",
                      "APP REVISION": "1.17.1",
                      "MODEL_NUMBER": "PB2",

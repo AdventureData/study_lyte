@@ -7,8 +7,8 @@ from setuptools import setup, find_packages
 with open('README.rst') as readme_file:
     readme = readme_file.read()
 
-requirements = ["pandas > 1.1.0", "pandas<2.0.0", 
-        "scipy>=1.8.0", "scipy<2.0.0"]
+requirements = ["pandas > 1.2.0", "pandas< 2.0.0",
+                "scipy>=1.8.0", "scipy<2.0.0"]
 test_requirements = ['pytest>=3', ]
 
 setup(

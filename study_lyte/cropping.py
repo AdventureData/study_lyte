@@ -1,3 +1,4 @@
+from study_lyte.adjustments import remove_ambient
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface
 from .decorators import time_series
 import pandas as pd
@@ -6,8 +7,7 @@ import pandas as pd
 @time_series
 def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs={}, stop_kwargs={}) -> pd.DataFrame:
     """
-    Crop the dataset to the only the motion as seen by the
-    accelerometer
+    Crop the dataset to only the motion as seen by the accelerometer
 
     Args:
         df: pd.DataFrame containing the column specified for acceleration
@@ -25,10 +25,10 @@ def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs={}, stop_
 
 
 @time_series
-def crop_to_snow(df: pd.DataFrame, active_col='Sensor2', ambient_col='Sensor3', **kwargs) -> pd.DataFrame:
+def crop_to_snow(df: pd.DataFrame, active_col='Sensor3', ambient_col='Sensor2', **kwargs) -> pd.DataFrame:
     """
-    Crop the dataset to the only the motion as seen by the
-    accelerometer
+    Crop the dataset to only the data in the snow as seen by the
+    NIR sensors
 
     Args:
         df: pd.DataFrame containing the column specified for acceleration
@@ -37,9 +37,10 @@ def crop_to_snow(df: pd.DataFrame, active_col='Sensor2', ambient_col='Sensor3', 
         kwargs: Other keyword arguments to pass on to detect.get_nir_surface
 
     Returns:
-        cropped: pd.Dataframe cropped to the time period where motion start/stopped
+        cropped: pd.Dataframe cropped to the time period where a surface was detected to the end
     """
-    surface = get_nir_surface(df)
-    cropped = df.loc[surface:, df.columns]
+    df['nir'] = remove_ambient(df[active_col],  df[ambient_col])
+    surface = get_nir_surface(df['nir'], **kwargs)
+    cropped = df.iloc[surface:]
     return cropped
 

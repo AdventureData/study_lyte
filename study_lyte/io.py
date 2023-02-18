@@ -1,7 +1,11 @@
+<<<<<<< HEAD
 import numpy as np
 from typing.io import TextIO
+=======
+>>>>>>> 71d37af8cc290d8c27a4668c005a9882d422659e
 from typing import Tuple
 import pandas as pd
+import numpy as np
 
 
 def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
@@ -37,12 +41,11 @@ def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
         df = pd.read_csv(f, header=header_position)
         # Drop any columns written with the plain index
         df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
-        if 'time' not in df.columns:
-            sample_keys = [c for c in metadata.keys() if 'sampl' in c]
-            if sample_keys:
-                sample_key = sample_keys[0]
-                n = len(df.index)
-                df['time'] = np.linspace(0, n/metadata[sample_key], n)
+
+        if 'time' not in df and 'SAMPLE RATE' in metadata:
+            sr = int(metadata['SAMPLE RATE'])
+            n = len(df)
+            df['time'] = np.linspace(0, n/sr, n)
 
         return df, metadata
 
