@@ -173,8 +173,6 @@ def get_nir_surface(clean_active, threshold=0.1, max_threshold=0.15):
     clean_norm = clean_norm - abs(clean_norm).min()
     surface = get_signal_event(clean_norm, search_direction='backward', threshold=threshold,
                                max_threshold=max_threshold)
-    from .plotting import plot_ts
-    plot_ts(clean_norm, events=[('surface', surface)])
     return surface
 
 

@@ -112,7 +112,7 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     # Find valleys after, select closest to midpoint
     valley_search = df[baro].iloc[top:].values
     default_idx = np.argmin(valley_search)
-    bottom = nearest_valley(valley_search, default_idx, default_index=int(2*(start+stop)/3))
+    bottom = nearest_valley(valley_search, default_idx, default_index=int(2*(stop-top)/3))
     bottom += top
 
     # Rescale
@@ -138,4 +138,5 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
     # zero it out
     result = result.set_index('time')
     result[baro] = result[baro] - result[baro].iloc[0]
+
     return result
