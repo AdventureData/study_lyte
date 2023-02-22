@@ -157,7 +157,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, dista
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=0.01, max_threshold=0.15):
+def get_nir_surface(clean_active, threshold=0.1, max_threshold=0.15):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 
@@ -171,7 +171,7 @@ def get_nir_surface(clean_active, threshold=0.01, max_threshold=0.15):
     """
     clean_norm = clean_active / clean_active.max()
     clean_norm = clean_norm - abs(clean_norm).min()
-    surface = get_signal_event(clean_norm, search_direction='forward', threshold=threshold,
+    surface = get_signal_event(clean_norm, search_direction='backward', threshold=threshold,
                                max_threshold=max_threshold)
     return surface
 
@@ -185,5 +185,4 @@ def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
     norm = active - bias
     norm = abs(norm / norm.max())
     stop = get_signal_event(norm, threshold=threshold, search_direction='forward')
-
     return stop
