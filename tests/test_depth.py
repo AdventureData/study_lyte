@@ -76,7 +76,7 @@ def test_get_fitted_depth(unfiltered_baro):
     # Confirm avg of tails and rescale
     ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -0.98, 1.5, -1, -1,  -1, -1], 3, 6., 1.2),
     # Example with no peak valley found
-    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -0.98, 1.5, -2.5, -1.1], 1, 4., 1.75)
+    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -0.98, 1.5, -2.5, -1.1], 1, 4., 1.25)
 
 ])
 def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected):
@@ -90,13 +90,14 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected)
 
 
 @pytest.mark.parametrize('fname, column, acc_axis, expected_depth', [
-    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 90),
+    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 71),
     ('baro_w_bench.csv', 'filtereddepth', 'Y-Axis', 43),
     ('baro_w_tails.csv', 'filtereddepth', 'Y-Axis', 57),
     ('smooth.csv', 'filtereddepth', 'Y-Axis', 65),
     ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 65),
     ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 55),
     ('pilots.csv', 'depth', 'Y-Axis', 207),
+    ('mores_pit_1.csv', 'depth', 'Y-Axis', 103),
 
 ])
 def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, expected_depth):

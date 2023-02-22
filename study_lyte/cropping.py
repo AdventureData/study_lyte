@@ -40,7 +40,7 @@ def crop_to_snow(df: pd.DataFrame, active_col='Sensor3', ambient_col='Sensor2', 
         cropped: pd.Dataframe cropped to the time period where a surface was detected to the end
     """
     df['nir'] = remove_ambient(df[active_col],  df[ambient_col])
-    surface = get_nir_surface(df['nir'], **kwargs)
+    surface = get_nir_surface(df['nir'].values, **kwargs)
     cropped = df.iloc[surface:]
     return cropped
 

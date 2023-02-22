@@ -30,7 +30,9 @@ def test_get_signal_event(data, threshold, direction, max_threshold, n_points, e
     Test the signal event is capable of return the correct index
     regardless of threshold, direction, and series or numpy array
     """
-    idx = get_signal_event(data, threshold=threshold, search_direction=direction, max_threshold=max_threshold,
+    idx = get_signal_event(data, threshold=threshold,
+                           search_direction=direction,
+                           max_threshold=max_threshold,
                            n_points=n_points)
     assert idx == expected
 
@@ -46,7 +48,9 @@ def test_get_signal_event(data, threshold, direction, max_threshold, n_points, e
 ])
 def test_get_acceleration_start(data, fractional_basis, threshold, max_threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
-    idx = get_acceleration_start(df['acceleration'], fractional_basis=fractional_basis, threshold=threshold,
+    idx = get_acceleration_start(df['acceleration'],
+                                 fractional_basis=fractional_basis,
+                                 threshold=threshold,
                                  max_threshold=max_threshold)
     assert idx == expected
 
@@ -72,7 +76,9 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 ])
 def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
-    idx = get_acceleration_stop(df['acceleration'], fractional_basis=fractional_basis, height=threshold)
+    idx = get_acceleration_stop(df['acceleration'],
+                                fractional_basis=fractional_basis,
+                                height=threshold)
 
     assert idx == expected
 
@@ -115,7 +121,9 @@ def test_get_acceleration_stop_time_index(raw_df):
 
 ])
 def test_get_nir_surface(active, threshold, max_threshold, expected):
-    idx = get_nir_surface(np.array(active), threshold=threshold, max_threshold=max_threshold)
+    idx = get_nir_surface(np.array(active),
+                          threshold=threshold,
+                          max_threshold=max_threshold)
     assert idx == expected
 
 
@@ -123,6 +131,8 @@ def test_get_nir_surface(active, threshold, max_threshold, expected):
     ('bogus.csv', 20385),
     ('pilots.csv', 9496),
     ('hard_surface_hard_stop.csv', 10167),
+    # No Ambient with tester stick
+    ('tester_stick.csv', 9887),
 
 ])
 def test_get_nir_surface_real(raw_df, fname, surface_idx):
@@ -132,4 +142,4 @@ def test_get_nir_surface_real(raw_df, fname, surface_idx):
     clean = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
     result = get_nir_surface(clean)
     # Ensure within 3% of original answer all the time.
-    assert pytest.approx(surface_idx, abs=int(0.03 * len(raw_df.index))) == result
+    assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result
