@@ -167,3 +167,26 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
         new.append(new_row)
     result = pd.DataFrame.from_records(new)
     return result
+
+
+def assume_no_upward_motion(df):
+    """
+    Removes any upward motion
+
+    Args:
+        df: Position df
+    Returns:
+        new_pos: Position df without upward motion
+    """
+    new_pos = df.iloc[:]
+    for i,row in df.iterrows():
+        new_row = row
+        if i != 0:
+            prev = df.iloc[i-1]
+            ind = row > prev
+            new_row[ind] = prev[ind]
+
+        new_pos.iloc[i] = new_row
+
+    # Rezero
+    return new_pos

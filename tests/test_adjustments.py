@@ -1,6 +1,6 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
                                     merge_time_series, remove_ambient, apply_calibration,
-                                    aggregate_by_depth, get_points_from_fraction)
+                                    aggregate_by_depth, get_points_from_fraction, assume_no_upward_motion)
 import pytest
 import pandas as pd
 import numpy as np
@@ -16,6 +16,7 @@ import numpy as np
 def test_get_points_from_fraction(n_samples, fraction, expected):
     idx = get_points_from_fraction(n_samples, fraction)
     assert idx == expected
+
 
 @pytest.mark.parametrize('data, fractional_basis, direction, expected', [
     # Test the directionality
@@ -124,7 +125,7 @@ def test_apply_calibration(data, coefficients, expected):
 
 @pytest.mark.parametrize("data, depth, new_depth, agg_method, expected_data", [
     # Test w/ intuitive data
-    #([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11]),
+    # ([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11]),
     # Test with negative depths
     ([2, 4, 6, 8], [-10, -20, -30, -40], [-20, -40], 'mean', [3, 7])
 
@@ -139,3 +140,17 @@ def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
     result = aggregate_by_depth(df, new_depth, agg_method=agg_method)
 
     pd.testing.assert_frame_equal(result, expected, check_dtype=False)
+
+
+@pytest.mark.parametrize('data1, data2, expected1, expected2', [
+    # Simple test with varying upwards motion
+    ([4, 5, 2], [5, 4, 5], [4, 4, 2], [5, 4, 4]),
+    # No adjustments needed
+    ([4, 3, 2], [5, 4, 3], [4, 3, 2], [5, 4, 3])
+
+])
+def test_assume_no_upward_motion(data1, data2, expected1, expected2):
+    df = pd.DataFrame.from_dict({'data1': data1, "data2": data2})
+    result = assume_no_upward_motion(df)
+    expected_df = pd.DataFrame.from_dict({'data1': expected1, 'data2': expected2})
+    pd.testing.assert_frame_equal(df, expected_df)
