@@ -114,7 +114,6 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None):
     """
     poly = np.poly1d(coefficients)
     result = poly(series)
-
     if maximum is not None:
         result[result > maximum] = maximum
     if minimum is not None:
@@ -169,24 +168,25 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     return result
 
 
-def assume_no_upward_motion(df):
-    """
-    Removes any upward motion
+def assume_no_upward_motion(series, method='nanmean'):
+    i = 1
+    result = series.copy()
 
-    Args:
-        df: Position df
-    Returns:
-        new_pos: Position df without upward motion
-    """
-    new_pos = df.iloc[:]
-    for i,row in df.iterrows():
-        new_row = row
-        if i != 0:
-            prev = df.iloc[i-1]
-            ind = row > prev
-            new_row[ind] = prev[ind]
+    while i < len(series):
+        data = series.iloc[i]
+        prev = series.iloc[i-1]
 
-        new_pos.iloc[i] = new_row
+        # Check for upward movement
+        if data > prev:
+            # Find all the points
+            ind = series.iloc[i-1:] >= prev
+            new = getattr(np, method)(series.iloc[i-1:][ind])
+            # grap last index
+            new_i = np.where(ind)[0][-1] + i
+            result.iloc[i-1:new_i] = new
+            i = new_i
 
-    # Rezero
-    return new_pos
+        else:
+            i += 1
+
+    return result

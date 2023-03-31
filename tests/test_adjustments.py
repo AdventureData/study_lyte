@@ -142,15 +142,20 @@ def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
     pd.testing.assert_frame_equal(result, expected, check_dtype=False)
 
 
-@pytest.mark.parametrize('data1, data2, expected1, expected2', [
-    # Simple test with varying upwards motion
-    ([4, 5, 2], [5, 4, 5], [4, 4, 2], [5, 4, 4]),
-    # No adjustments needed
-    ([4, 3, 2], [5, 4, 3], [4, 3, 2], [5, 4, 3])
+@pytest.mark.parametrize('data, method, expected', [
+    # Simple minor up tick to be smoothed out
+    ([7, 6, 5, 4, 5, 6, 2], 'nanmean', [7, 6, 5, 5, 5, 5, 2]),
+    # No uptick, check it is unaffected.
+    ([5, 4, 3, 2, 1], 'nanmean', [5, 4, 3, 2, 1]),
+    # Double hump
+    ([10, 9, 11, 8, 7, 6, 5, 4, 5, 6, 2], 'nanmean', [10, 10, 10, 8, 7, 6, 5, 5, 5, 5, 2]),
+    # Replacement for original function
+    ([4, 5, 2], 'nanmin', [4, 4, 2]),
 
 ])
-def test_assume_no_upward_motion(data1, data2, expected1, expected2):
-    df = pd.DataFrame.from_dict({'data1': data1, "data2": data2})
-    result = assume_no_upward_motion(df)
-    expected_df = pd.DataFrame.from_dict({'data1': expected1, 'data2': expected2})
-    pd.testing.assert_frame_equal(df, expected_df)
+def test_assign_downward_movement(data, method, expected):
+    s = pd.Series(np.array(data).astype(float), index=range(0, len(data)))
+    exp_s = pd.Series(np.array(expected).astype(float), index=range(0, len(expected)))
+    result = assume_no_upward_motion(s, method=method)
+    pd.testing.assert_series_equal(result, exp_s)
+
