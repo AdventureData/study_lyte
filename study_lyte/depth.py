@@ -141,28 +141,13 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanm
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
     result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
 
-    # zero it out
-    # result[baro] = result[baro] - result[baro].iloc[0]
-    # result = result.reset_index('ime')
-    # const = const.resset_index()
-    # df = df.set_index('time')
-
-    # # Plot it all up again
-    # from .plotting import plot_ts
-    # # get acc depth
-    # pos = get_depth_from_acceleration(df).mul(100)
-    # pos = pos.reset_index()
-    # df[baro] = df[baro] - df[baro].iloc[0]
-    # ax = plot_ts(df[baro], time_data=df['time'], color='steelblue', alpha=0.2,
-    #              data_label='Orig.', show=False, features=[top, bottom])
-    # ax = plot_ts(pos[acc_axis], time_data=pos['time'], color='black', alpha=0.5,
-    #              ax=ax, data_label='Acc.', show=False,
-    #              events=[('start', start), ('stop', stop), ('mid', mid)])
-    # ax = plot_ts(result[baro], time_data=result['time'], color='blue',
-    #              ax=ax, show=False, data_label='Part. Const.', alpha=0.3)
     const = assume_no_upward_motion(result[baro])
     const = const - const.iloc[0]
-    # ax = plot_ts(const, time_data=result['time'], color='magenta', alpha=1,
-    #              ax=ax, show=True, data_label='Constr.')
+    # from .plotting import plot_constrained_baro
+    # pos = get_depth_from_acceleration(df).mul(100)
+    # pos = pos.reset_index()
+    # plot_constrained_baro(df, result, const, pos, top, bottom, start, stop,
+    #                       baro=baro, acc_axis=acc_axis)
+
     result[baro] = const
     return result

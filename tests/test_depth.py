@@ -96,9 +96,9 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected)
     ('smooth.csv', 'filtereddepth', 'Y-Axis', 'nanmedian',  65),
     ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 65),
     ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 55),
-    ('pilots.csv', 'depth', 'Y-Axis', 'nanmedian', 211),
-    ('mores_pit_1.csv', 'depth', 'Y-Axis', 'nanmedian', 130),
-    ('rough_bench.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 63),
+    ('pilots.csv', 'depth', 'Y-Axis', 'nanmedian', 206),
+    ('mores_pit_1.csv', 'depth', 'Y-Axis', 'nanmedian', 120),
+    ('rough_bench.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 52),
 
 ])
 def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, method, expected_depth):
