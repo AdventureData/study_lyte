@@ -3,7 +3,7 @@ from scipy.integrate import cumtrapz
 import numpy as np
 
 from .decorators import time_series
-from .adjustments import get_neutral_bias_at_border
+from .adjustments import get_neutral_bias_at_border, assume_no_upward_motion
 from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley, nearest_peak
 
 
@@ -97,26 +97,31 @@ def get_fitted_depth(df: pd.DataFrame, column='depth', poly_deg=5) -> pd.DataFra
 
 
 @time_series
-def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
+def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanmedian'):
     """
     The Barometer depth is often stretched. Use the start and stop of the
     Accelerometer to constrain the peak/valley of the barometer, then rescale
     it by the tails
     """
+    df = df.reset_index()
+    df[baro] = df[baro] - df[baro].max()
+
+    window_func = getattr(np, method)
+
     # Hold a little higher reqs for start when rescaling the baro
     start = get_acceleration_start(df[[acc_axis]], threshold=0.01, max_threshold=0.03)
     stop = get_acceleration_stop(df[[acc_axis]])
-    mid = int((stop + start) / 2)
-    top = nearest_peak(df[baro].values, start, default_index=start, height=0.3, distance=100)
+    default_top = np.where(df[baro] == df[baro].max())[0][0]
+    top = nearest_peak(df[baro].values, start, default_index=default_top, height=-0.1, distance=100)
+    # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
-    valley_search = df[baro].iloc[top:].values
-    default_idx = np.argmin(valley_search)
-    bottom = nearest_valley(valley_search, default_idx, default_index=int(2*(stop-top)/3))
-    bottom += top
+    mid = int((stop-start) / 2)
+    valley_search = df[baro].iloc[mid:].values
+    v_min = valley_search.min()
+    bottom = np.where((valley_search < v_min+1) & (valley_search >= v_min))[0][0]
+    bottom += mid
 
-    # Rescale
-    top_mean = np.nanmedian(df[baro].iloc[:top+1])
     if bottom == stop:
         bot_mean_idx = bottom
 
@@ -125,18 +130,39 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
 
     else:
         bot_mean_idx = bottom - 1
-
-    bottom_mean = np.nanmedian(df[baro].iloc[bot_mean_idx:])
+    # Rescale
+    top_mean = window_func(df[baro].iloc[:top + 1])
+    bottom_mean = window_func(df[baro].iloc[bot_mean_idx:])
     delta_new = top_mean - bottom_mean
     delta_old = df[baro].iloc[top] - df[baro].iloc[bottom]
 
     depth_values = df[baro].iloc[top:bottom + 1].values
-    baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
+    baro_time = np.linspace(df['time'].iloc[start], df['time'].iloc[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
     result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
 
     # zero it out
-    result = result.set_index('time')
     result[baro] = result[baro] - result[baro].iloc[0]
+    # result = result.reset_index('ime')
+    # const = const.resset_index()
+    # df = df.set_index('time')
+
+    # Plot it all up again
+    from .plotting import plot_ts
+    # get acc depth
+    pos = get_depth_from_acceleration(df).mul(100)
+    pos = pos.reset_index()
+    df[baro] = df[baro] - df[baro].iloc[0]
+    ax = plot_ts(df[baro], time_data=df['time'], color='steelblue', alpha=0.2,
+                 data_label='Orig.', show=False, features=[top, bottom])
+    ax = plot_ts(pos[acc_axis], time_data=pos['time'], color='black', alpha=0.5,
+                 ax=ax, data_label='Acc.', show=False,
+                 events=[('start', start), ('stop', stop)])
+    ax = plot_ts(result[baro], time_data=result['time'], color='blue',
+                 ax=ax, show=False, data_label='Part. Const.')
+    const = assume_no_upward_motion(result[baro])
+    const = const - const.iloc[0]
+    ax = plot_ts(const, time_data=result['time'], color='magenta', alpha=0.5,
+                 ax=ax, show=True, data_label='Constr')
 
     return result

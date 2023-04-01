@@ -20,7 +20,7 @@ def first_peak(arr, default_index=1, **find_peak_kwargs):
 
 def nearest_peak(arr, nearest_to_index, default_index=0, **find_peak_kwargs):
     """Find the nearest peak to a designated point"""
-    pk_idx, pk_hgt = find_peaks((arr + arr.min()), **find_peak_kwargs)
+    pk_idx, pk_hgt = find_peaks(arr, **find_peak_kwargs)
     if len(pk_idx) > 0:
         nearest_val = pk_idx[(np.abs(pk_idx - nearest_to_index)).argmin()]
     else:

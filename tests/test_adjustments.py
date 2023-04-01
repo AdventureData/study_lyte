@@ -79,20 +79,27 @@ def test_merge_time_series(data_list, expected):
     for i, data in enumerate(data_list):
         name = f'data_{i}'
         # Let the number of values determine the sampling of time, always across 1 second
-        ts = np.linspace(0, 1, len(data))
+        ts = np.linspace(0, 1, len(data)).astype(float)
         df = pd.DataFrame({'time': ts, name: data})
+        df = df.set_index('time')
         other_dfs.append(df)
 
         # Build the expected dictionary
         expected_dict[name] = expected[i]
 
     result = merge_time_series(other_dfs)
-
+    if 'time' in result.columns:
+        result = result.set_index('time')
     # Build the expected using the expected input
     expected_df = pd.DataFrame(expected_dict)
+
+    if expected_dict:
+        expected_df['time'] = np.linspace(0, 1, len(expected_dict['data_0'])).astype(float)
+        expected_df = expected_df.set_index('time')
+
     exp_cols = expected_df.columns
 
-    pd.testing.assert_frame_equal(result[exp_cols], expected_df)
+    pd.testing.assert_frame_equal(result[exp_cols], expected_df, check_index_type=False)
 
 
 @pytest.mark.parametrize('active, ambient, min_ambient_range, expected', [
@@ -153,9 +160,16 @@ def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
     ([4, 5, 2], 'nanmin', [4, 4, 2]),
 
 ])
-def test_assign_downward_movement(data, method, expected):
+def test_assume_no_upward_motion(data, method, expected):
     s = pd.Series(np.array(data).astype(float), index=range(0, len(data)))
     exp_s = pd.Series(np.array(expected).astype(float), index=range(0, len(expected)))
     result = assume_no_upward_motion(s, method=method)
     pd.testing.assert_series_equal(result, exp_s)
 
+
+@pytest.mark.parametrize('fname, method, expected_depth', [
+    ('rough_bench.csv', 'nanmean', 10)
+])
+def test_assume_no_upward_motion_real(raw_df, fname, method, expected_depth):
+    result = assume_no_upward_motion(raw_df['filtereddepth'], method=method)
+    print('test')

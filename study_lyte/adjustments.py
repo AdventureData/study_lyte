@@ -168,9 +168,10 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     return result
 
 
-def assume_no_upward_motion(series, method='nanmean'):
+def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
     i = 1
     result = series.copy()
+    max_n = int(max_wind_frac*len(series))
 
     while i < len(series):
         data = series.iloc[i]
@@ -180,13 +181,25 @@ def assume_no_upward_motion(series, method='nanmean'):
         if data > prev:
             # Find all the points
             ind = series.iloc[i-1:] >= prev
-            new = getattr(np, method)(series.iloc[i-1:][ind])
-            # grap last index
-            new_i = np.where(ind)[0][-1] + i
-            result.iloc[i-1:new_i] = new
+            # new = getattr(np, method)(series.iloc[i-1:][ind])
+            rel_pos = np.where(ind)[0][-1]
+            # if rel_pos > max_n:
+            #     rel_pos = max_n
+            new_i = rel_pos + i
+
+            new = np.nanmean(series.iloc[i-1:new_i])
+            # grap last index, assign values
+            ind = result.iloc[i-1:] > new
+            result.iloc[i-1:][ind] = new
+
+            # Watch out for mid values less than the new value
+            new_val_idx = np.where(ind)[0][0] + (i-1)
+            ind = result.iloc[:new_val_idx] < new
+            result.iloc[:new_val_idx][ind] = new
+
             i = new_i
 
         else:
             i += 1
-
+    result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
     return result
