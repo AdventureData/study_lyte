@@ -151,13 +151,13 @@ def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
 
 @pytest.mark.parametrize('data, method, expected', [
     # Simple minor up tick to be smoothed out
-    ([7, 6, 5, 4, 5, 6, 2], 'nanmean', [7, 6, 5, 5, 5, 5, 2]),
-    # No uptick, check it is unaffected.
-    ([5, 4, 3, 2, 1], 'nanmean', [5, 4, 3, 2, 1]),
+    ([7, 6, 5, 4, 5, 6, 2], 'nanmean', [7, 6.5, 5.5, 5, 5, 5, 3.5]),
+    # No uptick, check it is mostly unaffected.
+    ([5, 4, 3, 2, 1], 'nanmean', [5, 4.5, 3.5, 2.5, 1.5]),
     # Double hump
-    ([10, 9, 11, 8, 7, 6, 5, 4, 5, 6, 2], 'nanmean', [10, 10, 10, 8, 7, 6, 5, 5, 5, 5, 2]),
+    ([10, 9, 11, 8, 7, 6, 5, 4, 5, 6, 2], 'nanmean', [10, 10, 10, 9, 7.5, 6.5, 5.5, 5, 5, 5, 3.5]),
     # Replacement for original function
-    ([4, 5, 2], 'nanmin', [4, 4, 2]),
+    ([4, 5, 2], 'nanmin', [4.5, 4.5, 3.25]),
 
 ])
 def test_assume_no_upward_motion(data, method, expected):

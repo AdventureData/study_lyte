@@ -172,6 +172,7 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
     i = 1
     result = series.copy()
     max_n = int(max_wind_frac*len(series))
+    max_n = max_n or 1
 
     while i < len(series):
         data = series.iloc[i]
@@ -181,10 +182,7 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
         if data > prev:
             # Find all the points
             ind = series.iloc[i-1:] >= prev
-            # new = getattr(np, method)(series.iloc[i-1:][ind])
             rel_pos = np.where(ind)[0][-1]
-            # if rel_pos > max_n:
-            #     rel_pos = max_n
             new_i = rel_pos + i
 
             new = np.nanmean(series.iloc[i-1:new_i])

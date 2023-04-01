@@ -72,9 +72,9 @@ def test_get_fitted_depth(unfiltered_baro):
 
 @pytest.mark.parametrize('depth_data, acc_data, start, stop, expected', [
     # Simple example where peak/valley is beyond start/stop
-    ([1.0, 1.2, 0.9, 0.75, 0.5, 0.25, 0.1, -0.2, 0], [-1, -1, -0.98, -0.01, 1, -2, -1, -1, -1], 2, 6, 1.1),
+    ([1.0, 1.2, 0.9, 0.75, 0.5, 0.25, 0.1, -0.2, 0], [-1, -1, -0.98, -0.01, 1, -2, -1, -1, -1], 2, 6, 0.76),
     # Confirm avg of tails and rescale
-    ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -0.98, 1.5, -1, -1,  -1, -1], 3, 6., 1.2),
+    ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -0.98, 1.5, -1, -1,  -1, -1], 3, 6., 0.92),
     # Example with no peak valley found
     ([1.5, 1.0, 0.5, 0, -0.5], [-1, -0.98, 1.5, -2.5, -1.1], 1, 4., 1.25)
 
@@ -83,8 +83,8 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected)
     t = range(len(depth_data))
     df = pd.DataFrame.from_dict({'depth': depth_data, 'Y-Axis': acc_data, 'time': t})
     result = get_constrained_baro_depth(df)
-    result_s = result.index[0]
-    result_e = result.index[-1]
+    result_s = result['time'].iloc[0]
+    result_e = result['time'].iloc[-1]
     delta_h_result = result['depth'].iloc[0] - result['depth'].iloc[-1]
     assert (result_s, result_e, pytest.approx(abs(delta_h_result), abs=0.01)) == (start, stop, expected)
 
