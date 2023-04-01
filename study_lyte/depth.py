@@ -112,11 +112,11 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanm
     start = get_acceleration_start(df[[acc_axis]], threshold=0.01, max_threshold=0.03)
     stop = get_acceleration_stop(df[[acc_axis]])
     default_top = np.where(df[baro] == df[baro].max())[0][0]
-    top = nearest_peak(df[baro].values, start, default_index=default_top, height=-0.1, distance=100)
+    top = nearest_peak(df[baro].values, start, default_index=default_top, height=-10, distance=100)
     # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
-    mid = int((stop-start) / 2)
+    mid = int((stop+start) / 2)
     valley_search = df[baro].iloc[mid:].values
     v_min = valley_search.min()
     bottom = np.where((valley_search < v_min+1) & (valley_search >= v_min))[0][0]
@@ -142,27 +142,27 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanm
     result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
 
     # zero it out
-    result[baro] = result[baro] - result[baro].iloc[0]
+    # result[baro] = result[baro] - result[baro].iloc[0]
     # result = result.reset_index('ime')
     # const = const.resset_index()
     # df = df.set_index('time')
 
-    # Plot it all up again
-    from .plotting import plot_ts
-    # get acc depth
-    pos = get_depth_from_acceleration(df).mul(100)
-    pos = pos.reset_index()
-    df[baro] = df[baro] - df[baro].iloc[0]
-    ax = plot_ts(df[baro], time_data=df['time'], color='steelblue', alpha=0.2,
-                 data_label='Orig.', show=False, features=[top, bottom])
-    ax = plot_ts(pos[acc_axis], time_data=pos['time'], color='black', alpha=0.5,
-                 ax=ax, data_label='Acc.', show=False,
-                 events=[('start', start), ('stop', stop)])
-    ax = plot_ts(result[baro], time_data=result['time'], color='blue',
-                 ax=ax, show=False, data_label='Part. Const.')
+    # # Plot it all up again
+    # from .plotting import plot_ts
+    # # get acc depth
+    # pos = get_depth_from_acceleration(df).mul(100)
+    # pos = pos.reset_index()
+    # df[baro] = df[baro] - df[baro].iloc[0]
+    # ax = plot_ts(df[baro], time_data=df['time'], color='steelblue', alpha=0.2,
+    #              data_label='Orig.', show=False, features=[top, bottom])
+    # ax = plot_ts(pos[acc_axis], time_data=pos['time'], color='black', alpha=0.5,
+    #              ax=ax, data_label='Acc.', show=False,
+    #              events=[('start', start), ('stop', stop), ('mid', mid)])
+    # ax = plot_ts(result[baro], time_data=result['time'], color='blue',
+    #              ax=ax, show=False, data_label='Part. Const.', alpha=0.3)
     const = assume_no_upward_motion(result[baro])
     const = const - const.iloc[0]
-    ax = plot_ts(const, time_data=result['time'], color='magenta', alpha=0.5,
-                 ax=ax, show=True, data_label='Constr')
-
+    # ax = plot_ts(const, time_data=result['time'], color='magenta', alpha=1,
+    #              ax=ax, show=True, data_label='Constr.')
+    result[baro] = const
     return result
