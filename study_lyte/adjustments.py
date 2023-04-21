@@ -98,13 +98,25 @@ def remove_ambient(active, ambient, min_ambient_range=100):
     """
     Attempts to remove the ambient signal from the active signal
     """
-    if (ambient.max() - ambient.min()) > min_ambient_range:
-        norm_ambient = get_normalized_at_border(ambient)
+    amb_max = ambient.max()
+    amb_min = ambient.min()
+    if (amb_max - amb_min) > min_ambient_range:
+        n = get_points_from_fraction(len(ambient), 0.01)
+        amb = ambient.rolling(window=n, center=True, closed='both', min_periods=1).mean()
+        norm_ambient = get_normalized_at_border(amb)
         norm_active = get_normalized_at_border(active)
         basis = get_directional_mean(active)
         clean = (norm_active - norm_ambient) * basis
+        if clean.min() < 0:
+            clean = clean - clean.min()
+
     else:
         clean = active
+    # from .plotting import plot_ts
+    # ax = plot_ts(clean, show=False)
+    # ax = plot_ts(norm_active, ax=ax, alpha=0.5,  show=False)
+    # ax = plot_ts(ambient, alpha=0.5,  ax=ax, show=True)
+
     return clean
 
 
@@ -173,7 +185,7 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
     result = series.copy()
     max_n = int(max_wind_frac*len(series))
     max_n = max_n or 1
-
+    upfunc = getattr(np, method)
     while i < len(series):
         data = series.iloc[i]
         prev = series.iloc[i-1]
@@ -182,22 +194,25 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
         if data > prev:
             # Find all the points
             ind = series.iloc[i-1:] >= prev
-            rel_pos = np.where(ind)[0][-1]
+            rel_pos = np.where(ind)[0][0]
             new_i = rel_pos + i
 
-            new = np.nanmean(series.iloc[i-1:new_i])
+            new = upfunc(series.iloc[i-1:new_i])
             # grap last index, assign values
             ind = result.iloc[i-1:] > new
             result.iloc[i-1:][ind] = new
-
             # Watch out for mid values less than the new value
-            new_val_idx = np.where(ind)[0][0] + (i-1)
-            ind = result.iloc[:new_val_idx] < new
-            result.iloc[:new_val_idx][ind] = new
+            #new_val_idx = np.where(ind)[0][0] + (i-1)
+            #ind = result.iloc[:new_val_idx] < new
+            #result.iloc[:new_val_idx][ind] = new
+            #from .plotting import plot_ts
 
-            i = new_i
+            #plot_ts(result, features=[i, new_i])
 
-        else:
-            i += 1
+            #i = new_i
+
+        #else:
+        i += 1
+    #from .plotting import plot_ts
     result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
     return result

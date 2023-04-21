@@ -119,6 +119,17 @@ def test_remove_ambient(active, ambient, min_ambient_range, expected):
     result = remove_ambient(active, ambient, min_ambient_range=100)
     np.testing.assert_equal(result, expected)
 
+@pytest.mark.parametrize('fname, surface_idx', [
+  ('noise_ambient.csv', 9887),
+])
+def test_remove_ambient_real(raw_df, fname, surface_idx):
+    """
+    Test that subtraction removes the ambient but re-scales back to the
+    original values
+    """
+    result = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'], min_ambient_range=100)
+    # np.testing.assert_equal(result, expected)
+    assert False
 
 @pytest.mark.parametrize('data, coefficients, expected', [
     ([1, 2, 3, 4], [2, 0], [2, 4, 6, 8])
