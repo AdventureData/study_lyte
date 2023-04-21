@@ -133,13 +133,15 @@ def test_get_nir_surface(active, threshold, max_threshold, expected):
     ('hard_surface_hard_stop.csv', 10167),
     # No Ambient with tester stick
     ('tester_stick.csv', 9887),
-
+    # Noise Ambient
+    ('noise_ambient.csv', 14641),
 ])
 def test_get_nir_surface_real(raw_df, fname, surface_idx):
     """
     Test surface with real data
     """
     clean = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
+
     result = get_nir_surface(clean)
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result

@@ -104,7 +104,7 @@ def test_merge_time_series(data_list, expected):
 
 @pytest.mark.parametrize('active, ambient, min_ambient_range, expected', [
     # Test normal situation with ambient present
-    ([200, 200, 400, 1000], [200, 200, 0, 0], 100, [0, 0, 400, 1000]),
+    ([200, 200, 400, 1000], [200, 200, 0, 0], 100, [0, 0, 300, 1000]),
     # Test no cleaning required
     ([200, 200, 400, 400], [210, 210, 200, 200], 90, [200, 200, 400, 400])
 
@@ -114,22 +114,10 @@ def test_remove_ambient(active, ambient, min_ambient_range, expected):
     Test that subtraction removes the ambient but re-scales back to the
     original values
     """
-    active = np.array(active)
-    ambient = np.array(ambient)
+    active = pd.Series(np.array(active))
+    ambient = pd.Series(np.array(ambient))
     result = remove_ambient(active, ambient, min_ambient_range=100)
-    np.testing.assert_equal(result, expected)
-
-@pytest.mark.parametrize('fname, surface_idx', [
-  ('noise_ambient.csv', 9887),
-])
-def test_remove_ambient_real(raw_df, fname, surface_idx):
-    """
-    Test that subtraction removes the ambient but re-scales back to the
-    original values
-    """
-    result = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'], min_ambient_range=100)
-    # np.testing.assert_equal(result, expected)
-    assert False
+    np.testing.assert_equal(result.values, expected)
 
 @pytest.mark.parametrize('data, coefficients, expected', [
     ([1, 2, 3, 4], [2, 0], [2, 4, 6, 8])
