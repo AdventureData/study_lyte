@@ -109,17 +109,24 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanm
     window_func = getattr(np, method)
 
     # Hold a little higher reqs for start when rescaling the baro
-    start = get_acceleration_start(df[[acc_axis]], threshold=0.01, max_threshold=0.03)
+    start = get_acceleration_start(df[[acc_axis]], max_threshold=0.03)
     stop = get_acceleration_stop(df[[acc_axis]])
-    default_top = np.where(df[baro] == df[baro].max())[0][0]
+    mid = int((stop+start) / 2)
+
+    top_search = df[baro].iloc[:mid]
+    default_top = np.where(top_search == top_search.max())[0][0]
     top = nearest_peak(df[baro].values, start, default_index=default_top, height=-10, distance=100)
     # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
-    mid = int((stop+start) / 2)
+    soft_stop = mid + int(0.1*len(df.index))
+    if soft_stop > len(df.index):
+        soft_stop = len(df.index) - 1
+
     valley_search = df[baro].iloc[mid:].values
     v_min = valley_search.min()
-    bottom = np.where((valley_search < v_min+1) & (valley_search >= v_min))[0][0]
+    vmin_idx = np.where(valley_search == v_min)[0][0]
+    bottom = nearest_peak(-1 * valley_search, stop - mid, default_index=vmin_idx, height=-10, distance=100)
     bottom += mid
 
     if bottom == stop:
