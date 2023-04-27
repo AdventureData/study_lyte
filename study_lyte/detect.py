@@ -176,13 +176,29 @@ def get_nir_surface(clean_active, threshold=0.05, max_threshold=0.1):
     return surface
 
 
-def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
+def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.01, threshold=-0.01):
     """
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
     """
-    bias = active[-1 * n_points_for_basis:].min()
-    norm = active - bias
-    norm = abs(norm / norm.max())
-    stop = get_signal_event(norm, threshold=threshold, search_direction='forward')
+    # Perform a removal of ambient but using the end of the data.
+    n = get_points_from_fraction(len(active), 0.05)
+    border_fract = 0.3
+    norm_active = get_normalized_at_border(active, fractional_basis=border_fract, direction='backward')
+    norm_active = norm_active.rolling(window=n, center=True, closed='both', min_periods=1).mean()
+    norm_active = norm_active - 1
+
+    ind = np.where(norm_active == norm_active.max())[0][0]
+    data = norm_active.iloc[ind:]
+    # diff = diff.rolling(window=n, center=True, closed='both', min_periods=1).median()
+
+    n_points = get_points_from_fraction(len(data), fractional_basis)
+    stop = get_signal_event(data, search_direction='backward', threshold=threshold,
+                            max_threshold=max_threshold, n_points=n_points)
+    stop += ind
+
+    from .plotting import plot_ts
+    ax = plot_ts(norm_active, events=[('stop', stop), ('avg_tail', len(norm_active) - n)],
+                 color='red', show=True)
     return stop
+

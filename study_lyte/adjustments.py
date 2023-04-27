@@ -94,29 +94,29 @@ def merge_time_series(df_list):
     return result
 
 
-def remove_ambient(active, ambient, min_ambient_range=100):
+def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
     """
     Attempts to remove the ambient signal from the active signal
     """
     amb_max = ambient.max()
     amb_min = ambient.min()
-    if (amb_max - amb_min) > min_ambient_range:
+    if abs(amb_max - amb_min) > min_ambient_range:
         n = get_points_from_fraction(len(ambient), 0.01)
         amb = ambient.rolling(window=n, center=True, closed='both', min_periods=1).mean()
-        norm_ambient = get_normalized_at_border(amb)
-        norm_active = get_normalized_at_border(active)
-        basis = get_directional_mean(active)
+        norm_ambient = get_normalized_at_border(amb, direction=direction)
+        norm_active = get_normalized_at_border(active, direction=direction)
+        basis = get_directional_mean(active, direction=direction)
         clean = (norm_active - norm_ambient) * basis
-        if clean.min() < 0:
+        if clean.min() < 0 and 'backward' not in direction:
             clean = clean - clean.min()
 
     else:
         clean = active
     # from .plotting import plot_ts
-    # ax = plot_ts(clean, show=False)
-    # ax = plot_ts(norm_active, ax=ax, alpha=0.5,  show=False)
-    # ax = plot_ts(ambient, alpha=0.5,  ax=ax, show=True)
-
+    # ax = plot_ts(norm_ambient, show=False)
+    # ax = plot_ts(norm_active, ax=ax, show=False)
+    # #ax.set_ylim(-1000, 4096)
+    # ax = plot_ts(norm_active - norm_ambient, ax=ax, show=True)
     return clean
 
 
@@ -149,9 +149,9 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     if df.index.name is not None:
         df = df.reset_index()
     dcol = df_depth_col
-    result = pd.DataFrame(columns=df.columns)
     cols = [c for c in df.columns if c != dcol]
     new = []
+
     for i, d2 in enumerate(new_depth):
         # Find previous depth value for comparison
         if i == 0:
@@ -181,10 +181,10 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
 
 
 def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
+    from .plotting import plot_ts
+
     i = 1
     result = series.copy()
-    max_n = int(max_wind_frac*len(series))
-    max_n = max_n or 1
     upfunc = getattr(np, method)
     while i < len(series):
         data = series.iloc[i]
@@ -194,13 +194,20 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
         if data > prev:
             # Find all the points
             ind = series.iloc[i-1:] >= prev
-            rel_pos = np.where(ind)[0][0]
-            new_i = rel_pos + i
 
+            rel_pos = np.where(ind)[0][-1]
+            new_i = rel_pos + i-1
             new = upfunc(series.iloc[i-1:new_i])
-            # grap last index, assign values
-            ind = result.iloc[i-1:] > new
-            result.iloc[i-1:][ind] = new
+
+            # grab last index, assign values
+            result.iloc[i-1:new_i] = new
+            ind = result.iloc[:new_i] <= new
+            # Find only continuous areas where condition is true
+            #continuous = (ind).astype(int).diff().abs().cumsum() == 0
+
+            result.iloc[:new_i][ind] = new
+            # ax = plot_ts(series, alpha=0.5, show=False, features=[i, new_i])
+            # ax = plot_ts(result, ax=ax)
             # Watch out for mid values less than the new value
             #new_val_idx = np.where(ind)[0][0] + (i-1)
             #ind = result.iloc[:new_val_idx] < new
@@ -209,10 +216,10 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
 
             #plot_ts(result, features=[i, new_i])
 
-            #i = new_i
+            i = new_i
 
-        #else:
-        i += 1
+        else:
+            i += 1
     #from .plotting import plot_ts
-    result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
+    #result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
     return result
