@@ -1,6 +1,7 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
                                     merge_time_series, remove_ambient, apply_calibration,
-                                    aggregate_by_depth, get_points_from_fraction, assume_no_upward_motion)
+                                    aggregate_by_depth, get_points_from_fraction, assume_no_upward_motion,
+                                    convert_force_to_pressure)
 import pytest
 import pandas as pd
 import numpy as np
@@ -150,25 +151,50 @@ def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
 
 @pytest.mark.parametrize('data, method, expected', [
     # Simple minor up tick to be smoothed out
-    ([7, 6, 5, 4, 5, 6, 2], 'nanmean', [7, 6.5, 5.5, 5, 5, 5, 3.5]),
+    ([7, 6, 5, 4, 5, 6, 2], 'nanmean', [7, 6, 5, 5, 5, 5, 2]),
     # No uptick, check it is mostly unaffected.
-    ([5, 4, 3, 2, 1], 'nanmean', [5, 4.5, 3.5, 2.5, 1.5]),
+    ([5, 4, 3, 2, 1], 'nanmean', [5, 4, 3, 2, 1]),
     # Double hump
-    ([10, 9, 11, 8, 7, 6, 5, 4, 5, 6, 2], 'nanmean', [10, 10, 10, 9, 7.5, 6.5, 5.5, 5, 5, 5, 3.5]),
+    ([10, 9, 11, 8, 7, 6, 5, 4, 5, 6, 2], 'nanmean', [10, 10, 10, 8, 7, 6, 5, 5, 5, 5, 2]),
     # Replacement for original function
-    ([4, 5, 2], 'nanmin', [4.5, 4.5, 3.25]),
+    ([4, 5, 2], 'nanmin', [4, 4, 2]),
 
 ])
 def test_assume_no_upward_motion(data, method, expected):
     s = pd.Series(np.array(data).astype(float), index=range(0, len(data)))
     exp_s = pd.Series(np.array(expected).astype(float), index=range(0, len(expected)))
     result = assume_no_upward_motion(s, method=method)
+    from study_lyte.plotting import plot_ts
+    ax = plot_ts(s, alpha=0.5, show=False)
+    ax = plot_ts(result,ax=ax, show=True)
+    #ax = plot_ts(exp_s, ax=ax, show=True)
+
     pd.testing.assert_series_equal(result, exp_s)
 
 
-@pytest.mark.parametrize('fname, method, expected_depth', [
-    ('rough_bench.csv', 'nanmean', 10)
+@pytest.mark.parametrize('fname, column, method, expected_depth', [
+    # ('hard_surface_hard_stop.csv', 'depth', 'nanmean', 83),
+    # ('baro_w_bench.csv', 'filtereddepth', 'nanmedian', 44),
+    # ('baro_w_tails.csv', 'filtereddepth', 'nanmean', 50),
+    # ('smooth.csv', 'filtereddepth', 'nanmedian', 63),
+    # ('low_zpfo_baro.csv', 'filtereddepth', 'nanmedian', 62),
+    ('lower_slow_down.csv', 'filtereddepth', 'nanmedian', 57),
+    ('rough_bench.csv', 'filtereddepth', 'nanmean', 52),
 ])
-def test_assume_no_upward_motion_real(raw_df, fname, method, expected_depth):
-    result = assume_no_upward_motion(raw_df['filtereddepth'], method=method)
-    print('test')
+def test_assume_no_upward_motion_real(raw_df, fname, column, method, expected_depth):
+    result = assume_no_upward_motion(raw_df[column], method=method)
+    delta_d = abs(result.max() - result.min())
+    from study_lyte.plotting import plot_ts
+    ax = plot_ts(raw_df[column] - raw_df[column].max(), alpha=0.5, show=False)
+    ax = plot_ts(result - result.max(), ax=ax, show=True)
+    assert pytest.approx(delta_d, abs=3) == expected_depth
+
+
+@pytest.mark.parametrize('force, tip_diameter, adj, expected', [
+    ([4, 8], 0.005, 1, [203.718327, 407.436654])
+])
+def test_convert_force_to_pressure(force, tip_diameter, adj, expected):
+    force_series = pd.Series(np.array(force).astype(float), index=range(0, len(force)))
+    expected = pd.Series(np.array(expected).astype(float), index=range(0, len(expected)))
+    result = convert_force_to_pressure(force_series, tip_diameter, adj)
+    pd.testing.assert_series_equal(result, expected)

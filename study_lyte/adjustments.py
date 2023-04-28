@@ -223,3 +223,20 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
     #from .plotting import plot_ts
     #result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
     return result
+
+def convert_force_to_pressure(force, tip_diameter_m, geom_adj=1):
+    """
+    Convert force data to pressure in KPa given the tip diameter and a tip shape adjustment
+    for geometry differences.
+
+    Args:
+        force: Pandas Series in Newtons
+        tip_diameter_m: Tip diameter in meters
+        geom_adj: Adjustment factor to account for geometry diffs.
+    Returns:
+        pressure: instrument pressure series in kilopascals
+    """
+    area = np.pi * ((tip_diameter_m / 2) ** 2)
+    # convert to kpa
+    pressure = force.div(area)
+    return pressure * geom_adj / 1000
