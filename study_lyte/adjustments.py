@@ -94,7 +94,7 @@ def merge_time_series(df_list):
     return result
 
 
-def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
+def remove_ambient(active, ambient, min_ambient_range=50, direction='forward'):
     """
     Attempts to remove the ambient signal from the active signal
     """
@@ -237,6 +237,7 @@ def convert_force_to_pressure(force, tip_diameter_m, geom_adj=1):
         pressure: instrument pressure series in kilopascals
     """
     area = np.pi * ((tip_diameter_m / 2) ** 2)
-    # convert to kpa
+    # convert to pressure in Pascals
     pressure = force.div(area)
+    # Adjust for shape and convert to kPa
     return pressure * geom_adj / 1000

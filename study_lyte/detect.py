@@ -197,8 +197,12 @@ def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.01, threshold=-0
                             max_threshold=max_threshold, n_points=n_points)
     stop += ind
 
-    from .plotting import plot_ts
-    ax = plot_ts(norm_active, events=[('stop', stop), ('avg_tail', len(norm_active) - n)],
-                 color='red', show=True)
+    # from .plotting import plot_ts, plt
+    # ax = plot_ts(norm_active, events=[('stop', stop), ('avg_tail', len(norm_active) - n)],
+    #              color='red', show=False)
+    # ax.axhline(threshold)
+    # ax.axhline(max_threshold)
+    # plt.show()
+
     return stop
 

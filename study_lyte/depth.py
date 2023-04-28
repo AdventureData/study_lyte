@@ -148,7 +148,8 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanm
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
     result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
 
-    const = assume_no_upward_motion(result[baro])
+    const = result[baro]
+    #assume_no_upward_motion(result[baro])
     const = const - const.iloc[0]
     # from .plotting import plot_constrained_baro
     # pos = get_depth_from_acceleration(df).mul(100)
