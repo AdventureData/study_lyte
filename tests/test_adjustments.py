@@ -134,15 +134,22 @@ def test_apply_calibration(data, coefficients, expected):
     # Test w/ intuitive data
     # ([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11]),
     # Test with negative depths
-    ([2, 4, 6, 8], [-10, -20, -30, -40], [-20, -40], 'mean', [3, 7])
+    ([[2, 4, 6, 8]], [-10, -20, -30, -40], [-20, -40], 'mean', [[3, 7]]),
+    # Test with column specific agg methods
+    ([[2, 4, 6, 8], [1, 1, 1, 1]], [-10, -20, -30, -40], [-20, -40], {'data0': 'mean','data1':'sum'}, [[3, 7], [2, 2]])
 
 ])
 def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
     """
     """
-    d = {'data': data, 'depth': depth}
-    df = pd.DataFrame.from_dict(d)
+    data_dict = {f'data{i}':d for i,d in enumerate(data)}
+    data_dict['depth'] = depth
+    df = pd.DataFrame.from_dict(data_dict)
+
     exp = {'data': expected_data, 'depth': new_depth}
+    exp = {f'data{i}':d for i,d in enumerate(expected_data)}
+    exp['depth'] = new_depth
+
     expected = pd.DataFrame.from_dict(exp)
     result = aggregate_by_depth(df, new_depth, agg_method=agg_method)
 

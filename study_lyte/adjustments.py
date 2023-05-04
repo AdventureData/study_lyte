@@ -151,6 +151,8 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     dcol = df_depth_col
     cols = [c for c in df.columns if c != dcol]
     new = []
+    # is the user request specific aggregation by column
+    agg_col_specific = True if type(agg_method) == dict else False
 
     for i, d2 in enumerate(new_depth):
         # Find previous depth value for comparison
@@ -172,7 +174,16 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
                 ind = ind & (df[dcol] >= d1)
             else:
                 ind = ind & (df[dcol] > d1)
-        new_row = getattr(df[cols][ind], agg_method)(axis=0)
+        if agg_col_specific:
+            for z,c in enumerate(cols):
+                nr = getattr(df[c][ind], agg_method[c])()
+                nr = pd.Series(data=nr, name=i, index=[c])
+                if z == 0:
+                    new_row = nr
+                else:
+                    new_row = pd.concat([new_row, nr])
+        else:
+            new_row = getattr(df[cols][ind], agg_method)(axis=0)
         new_row.name = i
         new_row[dcol] = d2
         new.append(new_row)
