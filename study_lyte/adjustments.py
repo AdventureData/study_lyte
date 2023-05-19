@@ -149,7 +149,7 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     if df.index.name is not None:
         df = df.reset_index()
     dcol = df_depth_col
-    cols = [c for c in df.columns if c != dcol]
+    cols = [c for c in df.columns if c not in [dcol, 'time']]
     new = []
     # is the user request specific aggregation by column
     agg_col_specific = True if type(agg_method) == dict else False
