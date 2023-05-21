@@ -18,7 +18,7 @@ def test_crop_to_motion(raw_df, fname, start_kwargs, stop_kwargs, expected_time_
 
 
 @pytest.mark.parametrize('active, ambient, cropped_values', [
-    ([1.0, 1.0, 1.4, 3, 3], [2, 2, 2, 1, 1], [1.4, 3, 3]),
+    ([100, 100, 120, 300, 300], [200, 200, 200, 100, 100], [120, 300, 300]),
 ])
 def test_crop_to_snow(active, ambient, cropped_values):
     """

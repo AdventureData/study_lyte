@@ -5,7 +5,7 @@ import pytest
 from study_lyte.io import read_csv
 from study_lyte.depth import get_depth_from_acceleration, get_average_depth, get_fitted_depth, \
     get_constrained_baro_depth
-
+from study_lyte.adjustments import assume_no_upward_motion
 
 @pytest.fixture(scope='session')
 def accel(data_dir):
@@ -76,34 +76,34 @@ def test_get_fitted_depth(unfiltered_baro):
     # Confirm avg of tails and rescale
     ([1.1, 0.9, 1.5, 1.0, 0.5, 0, -0.5, -0.1, 0.1], [-1, -1, -1, -0.98, 1.5, -1, -1,  -1, -1], 3, 6., 1.2),
     # Example with no peak valley found
-    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -0.98, 1.5, -2.5, -1.1], 1, 4., 1.25)
+    ([1.5, 1.0, 0.5, 0, -0.5], [-1, -0.98, 1.5, -2.5, -1.1], 1, 4., 2.0)
 
 ])
 def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected):
     t = range(len(depth_data))
     df = pd.DataFrame.from_dict({'depth': depth_data, 'Y-Axis': acc_data, 'time': t})
     result = get_constrained_baro_depth(df)
-    result_s = result.index[0]
-    result_e = result.index[-1]
+    result_s = result['time'].iloc[0]
+    result_e = result['time'].iloc[-1]
     delta_h_result = result['depth'].iloc[0] - result['depth'].iloc[-1]
     assert (result_s, result_e, pytest.approx(abs(delta_h_result), abs=0.01)) == (start, stop, expected)
 
 
-@pytest.mark.parametrize('fname, column, acc_axis, expected_depth', [
-    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 71),
-    ('baro_w_bench.csv', 'filtereddepth', 'Y-Axis', 43),
-    ('baro_w_tails.csv', 'filtereddepth', 'Y-Axis', 57),
-    ('smooth.csv', 'filtereddepth', 'Y-Axis', 65),
-    ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 65),
-    ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 55),
-    ('pilots.csv', 'depth', 'Y-Axis', 207),
-    ('mores_pit_1.csv', 'depth', 'Y-Axis', 103),
-
+@pytest.mark.parametrize('fname, column, acc_axis, method, expected_depth', [
+    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 'nanmean', 90),
+    ('baro_w_bench.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 43),
+    ('baro_w_tails.csv', 'filtereddepth', 'Y-Axis', 'nanmean', 62),
+    ('smooth.csv', 'filtereddepth', 'Y-Axis', 'nanmedian',  65),
+    ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 65),
+    ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 55),
+    ('pilots.csv', 'depth', 'Y-Axis', 'nanmedian', 211),
+    ('mores_pit_1.csv', 'depth', 'Y-Axis', 'nanmedian', 130),
+    ('rough_bench.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 52),
 ])
-def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, expected_depth):
+def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, method, expected_depth):
     """
     Test the constrained baro with acceleration data
     """
-    df = get_constrained_baro_depth(raw_df, baro=column, acc_axis=acc_axis)
+    df = get_constrained_baro_depth(raw_df, baro=column, acc_axis=acc_axis, method=method)
     delta_d = abs(df[column].max() - df[column].min())
     assert pytest.approx(delta_d, abs=3) == expected_depth

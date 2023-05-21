@@ -3,7 +3,7 @@ from scipy.integrate import cumtrapz
 import numpy as np
 
 from .decorators import time_series
-from .adjustments import get_neutral_bias_at_border
+from .adjustments import get_neutral_bias_at_border, assume_no_upward_motion
 from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley, nearest_peak
 
 
@@ -97,26 +97,38 @@ def get_fitted_depth(df: pd.DataFrame, column='depth', poly_deg=5) -> pd.DataFra
 
 
 @time_series
-def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
+def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanmedian'):
     """
     The Barometer depth is often stretched. Use the start and stop of the
     Accelerometer to constrain the peak/valley of the barometer, then rescale
     it by the tails
     """
+    df = df.reset_index()
+    df[baro] = df[baro] - df[baro].max()
+
+    window_func = getattr(np, method)
+
     # Hold a little higher reqs for start when rescaling the baro
-    start = get_acceleration_start(df[[acc_axis]], threshold=0.01, max_threshold=0.03)
+    start = get_acceleration_start(df[[acc_axis]], max_threshold=0.03)
     stop = get_acceleration_stop(df[[acc_axis]])
-    mid = int((stop + start) / 2)
-    top = nearest_peak(df[baro].values, start, default_index=start, height=0.3, distance=100)
+    mid = int((stop+start) / 2)
+
+    top_search = df[baro].iloc[:mid]
+    default_top = np.where(top_search == top_search.max())[0][0]
+    top = nearest_peak(df[baro].values, start, default_index=default_top, height=-10, distance=100)
+    # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
-    valley_search = df[baro].iloc[top:].values
-    default_idx = np.argmin(valley_search)
-    bottom = nearest_valley(valley_search, default_idx, default_index=int(2*(stop-top)/3))
-    bottom += top
+    soft_stop = mid + int(0.1*len(df.index))
+    if soft_stop > len(df.index):
+        soft_stop = len(df.index) - 1
 
-    # Rescale
-    top_mean = np.nanmedian(df[baro].iloc[:top+1])
+    valley_search = df[baro].iloc[mid:].values
+    v_min = valley_search.min()
+    vmin_idx = np.where(valley_search == v_min)[0][0]
+    bottom = nearest_peak(-1 * valley_search, stop - mid, default_index=vmin_idx, height=-10, distance=100)
+    bottom += mid
+
     if bottom == stop:
         bot_mean_idx = bottom
 
@@ -125,18 +137,25 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis'):
 
     else:
         bot_mean_idx = bottom - 1
-
-    bottom_mean = np.nanmedian(df[baro].iloc[bot_mean_idx:])
+    # Rescale
+    top_mean = window_func(df[baro].iloc[:top + 1])
+    bottom_mean = window_func(df[baro].iloc[bot_mean_idx:])
     delta_new = top_mean - bottom_mean
     delta_old = df[baro].iloc[top] - df[baro].iloc[bottom]
 
     depth_values = df[baro].iloc[top:bottom + 1].values
-    baro_time = np.linspace(df.index[start], df.index[stop], len(depth_values))
+    baro_time = np.linspace(df['time'].iloc[start], df['time'].iloc[stop], len(depth_values))
     result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
     result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
 
-    # zero it out
-    result = result.set_index('time')
-    result[baro] = result[baro] - result[baro].iloc[0]
+    const = result[baro]
+    #assume_no_upward_motion(result[baro])
+    const = const - const.iloc[0]
+    # from .plotting import plot_constrained_baro
+    # pos = get_depth_from_acceleration(df).mul(100)
+    # pos = pos.reset_index()
+    # plot_constrained_baro(df, result, const, pos, top, bottom, start, stop,
+    #                       baro=baro, acc_axis=acc_axis)
 
+    result[baro] = const
     return result

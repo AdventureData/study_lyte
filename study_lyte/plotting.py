@@ -27,7 +27,7 @@ class EventStyle(Enum):
         return self.value[-1]
 
 
-def plot_ts(data, data_label=None, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0):
+def plot_ts(data, data_label=None, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0, color=None):
     if ax is None:
         fig, ax = plt.subplots(1)
         ax.grid(True)
@@ -38,9 +38,9 @@ def plot_ts(data, data_label=None, time_data=None, events=None, features=None, s
         mark = '-'
 
     if time_data is not None:
-        ax.plot(time_data, data, mark, alpha=alpha, label=data_label)
+        ax.plot(time_data, data, mark, alpha=alpha, label=data_label, color=color)
     else:
-        ax.plot(data, mark, alpha=alpha, label=data_label)
+        ax.plot(data, mark, alpha=alpha, label=data_label, color=color)
 
     if data_label is not None:
         ax.legend()
@@ -65,3 +65,25 @@ def plot_ts(data, data_label=None, time_data=None, events=None, features=None, s
         plt.show()
 
     return ax
+
+
+def plot_constrained_baro(orig, partial, full, acc_pos, top, bottom, start, stop,
+                          baro='filtereddepth', acc_axis='Y-Axis'):
+
+    # zero it out
+    partial[baro] = partial[baro] - partial[baro].iloc[0]
+    # partial = partial.reset_index('time')
+    # orig = orig.set_index('time')
+
+    mid = int((start+stop)/2)
+
+    orig[baro] = orig[baro] - orig[baro].iloc[0]
+    ax = plot_ts(orig[baro], time_data=orig['time'], color='steelblue', alpha=0.2,
+                 data_label='Orig.', show=False, features=[top, bottom])
+    ax = plot_ts(acc_pos[acc_axis], time_data=acc_pos['time'], color='black', alpha=0.5,
+                 ax=ax, data_label='Acc.', show=False,
+                 events=[('start', start), ('stop', stop), ('mid', mid)])
+    ax = plot_ts(partial[baro], time_data=partial['time'], color='blue',
+                 ax=ax, show=False, data_label='Part. Const.', alpha=0.3)
+    ax = plot_ts(full, time_data=partial['time'], color='magenta', alpha=1,
+                 ax=ax, show=True, data_label='Constr.')

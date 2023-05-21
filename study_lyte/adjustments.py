@@ -94,17 +94,29 @@ def merge_time_series(df_list):
     return result
 
 
-def remove_ambient(active, ambient, min_ambient_range=100):
+def remove_ambient(active, ambient, min_ambient_range=50, direction='forward'):
     """
     Attempts to remove the ambient signal from the active signal
     """
-    if (ambient.max() - ambient.min()) > min_ambient_range:
-        norm_ambient = get_normalized_at_border(ambient)
-        norm_active = get_normalized_at_border(active)
-        basis = get_directional_mean(active)
+    amb_max = ambient.max()
+    amb_min = ambient.min()
+    if abs(amb_max - amb_min) > min_ambient_range:
+        n = get_points_from_fraction(len(ambient), 0.01)
+        amb = ambient.rolling(window=n, center=True, closed='both', min_periods=1).mean()
+        norm_ambient = get_normalized_at_border(amb, direction=direction)
+        norm_active = get_normalized_at_border(active, direction=direction)
+        basis = get_directional_mean(active, direction=direction)
         clean = (norm_active - norm_ambient) * basis
+        if clean.min() < 0 and 'backward' not in direction:
+            clean = clean - clean.min()
+
     else:
         clean = active
+    # from .plotting import plot_ts
+    # ax = plot_ts(norm_ambient, show=False)
+    # ax = plot_ts(norm_active, ax=ax, show=False)
+    # #ax.set_ylim(-1000, 4096)
+    # ax = plot_ts(norm_active - norm_ambient, ax=ax, show=True)
     return clean
 
 
@@ -114,7 +126,6 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None):
     """
     poly = np.poly1d(coefficients)
     result = poly(series)
-
     if maximum is not None:
         result[result > maximum] = maximum
     if minimum is not None:
@@ -138,9 +149,11 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     if df.index.name is not None:
         df = df.reset_index()
     dcol = df_depth_col
-    result = pd.DataFrame(columns=df.columns)
-    cols = [c for c in df.columns if c != dcol]
+    cols = [c for c in df.columns if c not in [dcol, 'time']]
     new = []
+    # is the user request specific aggregation by column
+    agg_col_specific = True if type(agg_method) == dict else False
+
     for i, d2 in enumerate(new_depth):
         # Find previous depth value for comparison
         if i == 0:
@@ -161,7 +174,16 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
                 ind = ind & (df[dcol] >= d1)
             else:
                 ind = ind & (df[dcol] > d1)
-        new_row = getattr(df[cols][ind], agg_method)(axis=0)
+        if agg_col_specific:
+            for z,c in enumerate(cols):
+                nr = getattr(df[c][ind], agg_method[c])()
+                nr = pd.Series(data=nr, name=i, index=[c])
+                if z == 0:
+                    new_row = nr
+                else:
+                    new_row = pd.concat([new_row, nr])
+        else:
+            new_row = getattr(df[cols][ind], agg_method)(axis=0)
         new_row.name = i
         new_row[dcol] = d2
         new.append(new_row)
@@ -169,24 +191,64 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
     return result
 
 
-def assume_no_upward_motion(df):
+def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
+    from .plotting import plot_ts
+
+    i = 1
+    result = series.copy()
+    upfunc = getattr(np, method)
+    while i < len(series):
+        data = series.iloc[i]
+        prev = series.iloc[i-1]
+
+        # Check for upward movement
+        if data > prev:
+            # Find all the points
+            ind = series.iloc[i-1:] >= prev
+
+            rel_pos = np.where(ind)[0][-1]
+            new_i = rel_pos + i-1
+            new = upfunc(series.iloc[i-1:new_i])
+
+            # grab last index, assign values
+            result.iloc[i-1:new_i] = new
+            ind = result.iloc[:new_i] <= new
+            # Find only continuous areas where condition is true
+            #continuous = (ind).astype(int).diff().abs().cumsum() == 0
+
+            result.iloc[:new_i][ind] = new
+            # ax = plot_ts(series, alpha=0.5, show=False, features=[i, new_i])
+            # ax = plot_ts(result, ax=ax)
+            # Watch out for mid values less than the new value
+            #new_val_idx = np.where(ind)[0][0] + (i-1)
+            #ind = result.iloc[:new_val_idx] < new
+            #result.iloc[:new_val_idx][ind] = new
+            #from .plotting import plot_ts
+
+            #plot_ts(result, features=[i, new_i])
+
+            i = new_i
+
+        else:
+            i += 1
+    #from .plotting import plot_ts
+    #result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
+    return result
+
+def convert_force_to_pressure(force, tip_diameter_m, geom_adj=1):
     """
-    Removes any upward motion
+    Convert force data to pressure in KPa given the tip diameter and a tip shape adjustment
+    for geometry differences.
 
     Args:
-        df: Position df
+        force: Pandas Series in Newtons
+        tip_diameter_m: Tip diameter in meters
+        geom_adj: Adjustment factor to account for geometry diffs.
     Returns:
-        new_pos: Position df without upward motion
+        pressure: instrument pressure series in kilopascals
     """
-    new_pos = df.iloc[:]
-    for i,row in df.iterrows():
-        new_row = row
-        if i != 0:
-            prev = df.iloc[i-1]
-            ind = row > prev
-            new_row[ind] = prev[ind]
-
-        new_pos.iloc[i] = new_row
-
-    # Rezero
-    return new_pos
+    area = np.pi * ((tip_diameter_m / 2) ** 2)
+    # convert to pressure in Pascals
+    pressure = force.div(area)
+    # Adjust for shape and convert to kPa
+    return pressure * geom_adj / 1000

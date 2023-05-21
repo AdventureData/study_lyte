@@ -20,7 +20,7 @@ def first_peak(arr, default_index=1, **find_peak_kwargs):
 
 def nearest_peak(arr, nearest_to_index, default_index=0, **find_peak_kwargs):
     """Find the nearest peak to a designated point"""
-    pk_idx, pk_hgt = find_peaks((arr + arr.min()), **find_peak_kwargs)
+    pk_idx, pk_hgt = find_peaks(arr, **find_peak_kwargs)
     if len(pk_idx) > 0:
         nearest_val = pk_idx[(np.abs(pk_idx - nearest_to_index)).argmin()]
     else:
@@ -157,7 +157,7 @@ def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, dista
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=0.1, max_threshold=0.15):
+def get_nir_surface(clean_active, threshold=0.05, max_threshold=0.1):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 
@@ -171,18 +171,38 @@ def get_nir_surface(clean_active, threshold=0.1, max_threshold=0.15):
     """
     clean_norm = clean_active / clean_active.max()
     clean_norm = clean_norm - abs(clean_norm).min()
-    surface = get_signal_event(clean_norm, search_direction='backward', threshold=threshold,
+    surface = get_signal_event(clean_norm, search_direction='forward', threshold=threshold,
                                max_threshold=max_threshold)
     return surface
 
 
-def get_nir_stop(active, n_points_for_basis=1000, threshold=0.01):
+def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.01, threshold=-0.01):
     """
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
     """
-    bias = active[-1 * n_points_for_basis:].min()
-    norm = active - bias
-    norm = abs(norm / norm.max())
-    stop = get_signal_event(norm, threshold=threshold, search_direction='forward')
+    # Perform a removal of ambient but using the end of the data.
+    n = get_points_from_fraction(len(active), 0.05)
+    border_fract = 0.3
+    norm_active = get_normalized_at_border(active, fractional_basis=border_fract, direction='backward')
+    norm_active = norm_active.rolling(window=n, center=True, closed='both', min_periods=1).mean()
+    norm_active = norm_active - 1
+
+    ind = np.where(norm_active == norm_active.max())[0][0]
+    data = norm_active.iloc[ind:]
+    # diff = diff.rolling(window=n, center=True, closed='both', min_periods=1).median()
+
+    n_points = get_points_from_fraction(len(data), fractional_basis)
+    stop = get_signal_event(data, search_direction='backward', threshold=threshold,
+                            max_threshold=max_threshold, n_points=n_points)
+    stop += ind
+
+    # from .plotting import plot_ts, plt
+    # ax = plot_ts(norm_active, events=[('stop', stop), ('avg_tail', len(norm_active) - n)],
+    #              color='red', show=False)
+    # ax.axhline(threshold)
+    # ax.axhline(max_threshold)
+    # plt.show()
+
     return stop
+

@@ -1,4 +1,4 @@
-from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface
+from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
 from study_lyte.io import read_csv
 from study_lyte.adjustments import remove_ambient
 import pytest
@@ -133,13 +133,32 @@ def test_get_nir_surface(active, threshold, max_threshold, expected):
     ('hard_surface_hard_stop.csv', 10167),
     # No Ambient with tester stick
     ('tester_stick.csv', 9887),
-
+    # Noise Ambient
+    ('noise_ambient.csv', 14641),
 ])
 def test_get_nir_surface_real(raw_df, fname, surface_idx):
     """
     Test surface with real data
     """
     clean = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
+
     result = get_nir_surface(clean)
+    # Ensure within 3% of original answer all the time.
+    assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result
+
+@pytest.mark.parametrize('fname, surface_idx', [
+    ('bogus.csv', 31286),
+    ('pilots.csv', 23764),
+    ('hard_surface_hard_stop.csv', 13501),
+    # No Ambient with tester stick
+    ('tester_stick.csv', 25273),
+    # Noise Ambient
+    ('noise_ambient.csv', 21867),
+])
+def test_get_nir_stop_real(raw_df, fname, surface_idx):
+    """
+    Test surface with real data
+    """
+    result = get_nir_stop(raw_df['Sensor3'])
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result
