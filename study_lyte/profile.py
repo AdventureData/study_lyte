@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import pandas as pd
+from pathlib import Path
 
 from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient
@@ -13,27 +14,27 @@ class Event:
     index: int
     depth: float # centimeters
 
-
 class Sensor(Enum):
     """Enum for various scenarios that come up with variations of data"""
     UNAVAILABLE = -1
 
 
 class LyteProfileV6:
-    def __init__(self, filename, surface_detection_offset=4.5):
+    def __init__(self, filename, surface_detection_offset=4.5, calibrations=None):
         """
         """
-        self.filename = filename
+        self.filename = Path(filename)
         self.surface_detection_offset = surface_detection_offset
 
         # Properties
         self._df = None
         self._meta = None
 
-        # Helpers
-        self._motion_detect_column = None
-        self._acceleration = None
-
+        self._motion_detect_column = None # column name containing accel data
+        self._acceleration = None # No gravity acceleration
+        self._cropped = None  # Full dataframe cropped to surface and stop
+        self._distance_travelled = None # distance travelled in snow
+        self._datetime = None
         # Events
         self._start = None
         self._stop = None
@@ -46,8 +47,17 @@ class LyteProfileV6:
             self._df = self._df.rename(columns={'depth':'filtereddepth'})
         return self._df
 
+    @property
     def cropped(self):
-        return self.raw_df.iloc[self.surface.index:self.stop.index]
+        """
+        Return dataset cropped to snow and depth zero-ed out at
+        surface
+        """
+        if self._cropped is None:
+            # Crop and reset index so surface = index(0)
+            self._cropped = self.raw_df.iloc[self.surface.index:self.stop.index].reset_index()
+            self._cropped['depth'] = self._cropped['depth'] - self._cropped['depth'].iloc[0]
+        return self._cropped
 
     @property
     def metadata(self):
@@ -57,8 +67,14 @@ class LyteProfileV6:
 
     @property
     def acceleration(self):
+        """
+        Retrieve acceleration without gravity
+        """
+        # Assign the detection column if it is available
         if self._motion_detect_column is None:
-            self._motion_detect_column = self.get_accelerometer_column(self.raw_df.columns) or Sensor.UNAVAILABLE
+            self._motion_detect_column = \
+                self.get_accelerometer_column(self.raw_df.columns) or \
+            Sensor.UNAVAILABLE
 
         if self._acceleration is None:
             if self._motion_detect_column != Sensor.UNAVAILABLE:
@@ -70,6 +86,9 @@ class LyteProfileV6:
 
     @property
     def nir(self):
+        """
+        Retrieve the Active NIR sensor with ambient removed
+        """
         if 'nir' not in self.raw_df.columns:
             nir = remove_ambient(self.raw_df['Sensor3'], self.raw_df['Sensor2'])
             self.raw_df['nir'] = nir
@@ -78,9 +97,10 @@ class LyteProfileV6:
     @property
     def depth(self):
         if 'depth' not in self.raw_df.columns:
-            df = pd.DataFrame.from_dict({'time':self.raw_df['time'], 'acceleration':self.acceleration})
+            df = pd.DataFrame.from_dict({'time':self.raw_df['time'],
+                                         'acceleration':self.acceleration})
             depth = get_depth_from_acceleration(df).reset_index()
-            self.raw_df['depth'] = depth[self._motion_detect_column]
+            self.raw_df['depth'] = depth[self._motion_detect_column].mul(100)
         return self.raw_df['depth']
 
     @property
@@ -109,8 +129,23 @@ class LyteProfileV6:
             depth = self.depth.iloc[idx]
             self._surface = Event(name='surface', index=idx, depth=depth)
         return self._surface
+
+    @property
+    def distance_traveled(self):
+        if self._distance_travelled is None:
+            self._distance_travelled = self.cropped['depth'].max() - self.cropped['depth'].min()
+        return self._distance_travelled
+    @property
+    def datetime(self):
+        if self._datetime is None:
+            self._datetime = pd.to_datetime(self.metadata['RECORDED'])
+        return self._datetime
+
     @property
     def events(self):
+        """
+        Return all the common events recorded
+        """
         return [self.start, self.stop, self.surface]
 
     @staticmethod
@@ -124,3 +159,13 @@ class LyteProfileV6:
             return candidates[0]
         else:
             return None
+
+    def __repr__(self):
+        msg = '\n| {:<10} {:<10} \n'
+        header = f'+---- {self.filename.name} ----+\n'
+        profile_string = header
+        profile_string += msg.format('Recorded', f'{self.datetime.isoformat()}')
+        profile_string += msg.format('Points', f'{len(self.raw_df.index):,}')
+        profile_string += msg.format('Depth', f'{self.distance_traveled:0.1f} cm')
+        profile_string += '-' * len(header) + '\n'
+        return profile_string
