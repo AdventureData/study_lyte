@@ -104,22 +104,20 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     return event_idx
 
 
-def get_acceleration_start(acceleration, fractional_basis: float = 0.01, threshold=-0.01, max_threshold=0.02):
+def get_acceleration_start(acceleration, threshold=-0.01, max_threshold=0.02):
     """
     Returns the index of the first value that has a relative change
     Args:
-        acceleration: np.array or pandas series of acceleration data
-        fractional_basis: fraction of the number of points to average over for bias adjustment
+        acceleration: np.array or pandas series of acceleration without gravity
         threshold: relative minimum change to indicate start
         max_threshold: Maximum allowed threshold to be considered a start
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
-    acceleration = acceleration[~np.isnan(acceleration)]
+    accel_neutral = acceleration[~np.isnan(acceleration)]
 
     # Get the neutral signal between start and the max
-    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis, direction='forward')
     max_ind = first_peak(np.abs(accel_neutral), height=0.3, distance=10)
     n_points = get_points_from_fraction(len(acceleration), 0.005)
 
@@ -129,24 +127,20 @@ def get_acceleration_start(acceleration, fractional_basis: float = 0.01, thresho
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, fractional_basis=0.02, height=0.3, distance=10):
+def get_acceleration_stop(acceleration, height=0.3, distance=10):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
     Args:
         acceleration:pandas series of acceleration data
-        fractional_basis: fraction of the number of points to average over for bias adjustment
         height: Float in g's for minimum peak findable
         distance: Minimum distance between peaks
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
-    acceleration = acceleration[~np.isnan(acceleration)]
+    accel_neutral = acceleration[~np.isnan(acceleration)]
 
-    # remove gravity
-    accel_neutral = get_neutral_bias_at_border(acceleration, fractional_basis=fractional_basis,
-                                               direction='forward')
     # Find the first real negative peak starting at the end
     ind = first_peak(-1 * accel_neutral[::-1], default_index=0, height=height, distance=distance)
     if ind == 0:
