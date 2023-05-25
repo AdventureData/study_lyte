@@ -35,7 +35,7 @@ class LyteProfileV6:
             self.calibration = calibration or {}
 
             # Properties
-            self._df = None
+            self._raw = None
             self._meta = None
 
             self._acceleration = None # No gravity acceleration
@@ -50,17 +50,27 @@ class LyteProfileV6:
             self._acceleration_names = None # All columns containing accel data
             self._moving_time = None # time the probe was moving
             self._avg_velocity = None # avg velocity of the probe while in the snow
-
+            self._resolution = None # Vertical resolution of the profile in the snow
             self._datetime = None
             # Events
             self._start = None
             self._stop = None
             self._surface = None
 
+        @staticmethod
+        def process_df(df):
+            """
+            Migrate all baro depths to filtereddepth and remove ambient
+            to add NIR column
+            """
+            df = df.rename(columns={'depth': 'filtereddepth'})
+            df['nir'] = remove_ambient(df['Sensor3'], df['Sensor2'])
+            return df
+
         @classmethod
         def from_dataframe(cls, df):
             profile = LyteProfileV6(None)
-            profile._df = df
+            profile._raw = self.process_df(df)
             return profile
 
         @property
@@ -68,10 +78,11 @@ class LyteProfileV6:
             """
             Pandas dataframe hold the data exactly as it read in.
             """
-            if self._df is None:
-                self._df, self._meta = read_csv(str(self.filename))
-                self._df = self._df.rename(columns={'depth':'filtereddepth'})
-            return self._df
+            if self._raw is None:
+                self._raw, self._meta = read_csv(str(self.filename))
+                self._raw = self.process_df(self.raw)
+
+            return self._raw
 
 
         @property
@@ -79,8 +90,10 @@ class LyteProfileV6:
             """
             Returns a dictionary of all data held in the header portion of the csv
             """
-            if self._df is None:
-                self._df, self._meta = read_csv(str(self.filename))
+            if self._raw is None:
+                self._raw, self._meta = read_csv(str(self.filename))
+                self._raw = self.process_df(self.raw)
+
             return self._meta
 
         @property
@@ -117,7 +130,6 @@ class LyteProfileV6:
             Retrieve the Active NIR sensor with ambient NIR removed
             """
             if self._nir is None:
-                self.raw['nir'] = remove_ambient(self.raw['Sensor3'], self.raw['Sensor2'])
                 self._nir = pd.DataFrame({'nir': self.raw['nir'], 'depth': self.depth})
                 self._nir = self._nir.iloc[self.surface.nir.index:self.stop.index].reset_index()
                 self._nir = self._nir.drop(columns='index')
@@ -146,9 +158,9 @@ class LyteProfileV6:
         def depth(self):
             if 'depth' not in self.raw.columns:
                 df = pd.DataFrame.from_dict({'time':self.raw['time'],
-                                             'acceleration':self.acceleration})
+                                             self.motion_detect_name:self.acceleration})
                 depth = get_depth_from_acceleration(df).reset_index()
-                self.raw['depth'] = depth[self._motion_detect_name]
+                self.raw['depth'] = depth[self.motion_detect_name]
             return self.raw['depth']
 
         @property
@@ -181,12 +193,10 @@ class LyteProfileV6:
             """
             if self._surface is None:
                 # Call to populate nir in raw
-                self.nir
                 idx = get_nir_surface(self.raw['nir'])
                 depth = self.depth.iloc[idx]
                 # Event according the NIR sensors
                 nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
-
 
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
@@ -225,6 +235,13 @@ class LyteProfileV6:
             if self._datetime is None:
                 self._datetime = pd.to_datetime(self.metadata['RECORDED'])
             return self._datetime
+        
+        @property
+        def resolution(self):
+            if self._resolution is None:
+                n_points = len(self.nir)
+                self._resolution = n_points / self.distance_through_snow
+            return self._resolution
 
         @property
         def events(self):
@@ -270,6 +287,7 @@ class LyteProfileV6:
             profile_string += msg.format('Points', f'{len(self.raw.index):,}')
             profile_string += msg.format('Moving Time', f'{self.moving_time:0.1f} s')
             profile_string += msg.format('Avg. Speed', f'{self.avg_velocity:0.0f} cm/s')
+            profile_string += msg.format('Resolution', f'{self.resolution:0.1f} pts/cm')
             profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
             profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
             profile_string += '-' * (len(header)-2) + '\n'
