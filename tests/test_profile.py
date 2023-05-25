@@ -99,3 +99,8 @@ class TestLyteProfile:
         """ Test the retrieval of the accelerometer column"""
         result = LyteProfileV6.get_acceleration_columns(columns)
         assert result == expected
+
+    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    def test_repr(self, profile):
+        profile_str = f"LyteProfile (Recorded {len(profile.raw):,} points, {profile.datetime.isoformat()})"
+        assert str(profile) == profile_str

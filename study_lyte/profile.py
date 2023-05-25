@@ -117,8 +117,8 @@ class LyteProfileV6:
             Retrieve the Active NIR sensor with ambient NIR removed
             """
             if self._nir is None:
-                nir = remove_ambient(self.raw['Sensor3'], self.raw['Sensor2'])
-                self._nir = pd.DataFrame({'nir': nir, 'depth': self.depth})
+                self.raw['nir'] = remove_ambient(self.raw['Sensor3'], self.raw['Sensor2'])
+                self._nir = pd.DataFrame({'nir': self.raw['nir'], 'depth': self.depth})
                 self._nir = self._nir.iloc[self.surface.nir.index:self.stop.index].reset_index()
                 self._nir = self._nir.drop(columns='index')
                 self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
@@ -180,7 +180,9 @@ class LyteProfileV6:
             Return surface events for the nir and force which are physically separated by a distance
             """
             if self._surface is None:
-                idx = get_nir_surface(self.nir)
+                # Call to populate nir in raw
+                self.nir
+                idx = get_nir_surface(self.raw['nir'])
                 depth = self.depth.iloc[idx]
                 # Event according the NIR sensors
                 nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
@@ -255,7 +257,10 @@ class LyteProfileV6:
             else:
                 return Sensor.UNAVAILABLE
 
-        def __repr__(self):
+        def report_card(self):
+            """
+            Return a useful string to print about metrics
+            """
             msg = '| {:<15} {:<20} |\n'
             n_chars = int((39 - len(self.filename.name)) / 2)
             s =  '-'* n_chars
@@ -269,3 +274,8 @@ class LyteProfileV6:
             profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
             profile_string += '-' * (len(header)-2) + '\n'
             return profile_string
+
+
+        def __repr__(self):
+            profile_str = f"LyteProfile (Recorded {len(self.raw):,} points, {self.datetime.isoformat()})"
+            return profile_str
