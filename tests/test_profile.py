@@ -1,34 +1,50 @@
 import pytest
 from os.path import join
-from study_lyte.profile import LyteProfileV6
+from study_lyte.profile import LyteProfileV6, Event
 
 
 class TestLyteProfile:
 
     @pytest.fixture()
     def profile(self, data_dir, filename):
-        return LyteProfileV6(join(data_dir, filename))
+        return LyteProfileV6(join(data_dir, filename), calibration={'Sensor1': [1, 0]})
 
     @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 100)
+        ('kaslo.csv', 9539)
     ])
     def test_start_property(self, profile, filename, expected):
-        assert profile.start.index == expected
+        start = profile.start.index
+        assert start == expected
 
     @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 100)
+        ('kaslo.csv', 27278)
     ])
     def test_stop_property(self, profile, filename, expected):
+        stop = profile.stop.index
         assert profile.stop.index == expected
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 100)
+    @pytest.mark.parametrize('filename, expected_idx', [
+        ('kaslo.csv', 1832)
     ])
-    def test_surface_property(self, profile, filename, expected):
-        from study_lyte.plotting import plot_ts
-        #plot_ts(profile.cropped['Sensor1'], events=[(e.name, e.index) for e in profile.events])
-        print(profile)
-        assert profile.surface.index == expected
+    def test_nir_surface_property(self, profile, filename, expected_idx):
+        nir_surface = profile.surface.nir
+        assert profile.surface.nir.index ==expected_idx
+
+    @pytest.mark.parametrize('filename, expected_points, mean_force', [
+        ('kaslo.csv', 17269, 3548.3813)
+    ])
+    def test_force_profile(self, profile, filename, expected_points, mean_force):
+        assert len(profile.force) == expected_points
+        assert pytest.approx(profile.force['force'].mean(), abs=1e-4) == mean_force
+
+    @pytest.mark.parametrize('filename, expected_points, mean_force', [
+        ('kaslo.csv', 12979, 3027.4536)
+    ])
+    def test_nir_profile(self, profile, filename, expected_points, mean_force):
+        print(profile.nir)
+        assert len(profile.nir) == expected_points
+        assert pytest.approx(profile.nir['nir'].mean(), abs=1e-4) == mean_force
+
 
     @pytest.mark.parametrize('columns, expected', [
         # Test old naming of accelerometer
