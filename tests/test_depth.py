@@ -30,10 +30,10 @@ def unfiltered_baro(data_dir):
 
 
 @pytest.mark.parametrize('component, expected_delta', [
-    ('X-Axis', 0.270),
-    ('Y-Axis', 0.516),
-    ('Z-Axis', 0.658),
-    ('magnitude', 0.836)])
+    ('X-Axis', 27.0),
+    ('Y-Axis', 51.6),
+    ('Z-Axis', 65.8),
+    ('magnitude', 83.6)])
 def test_get_depth_from_acceleration_full(accel, component, expected_delta):
     """
     Test extracting position of the probe from acceleration on real data
@@ -41,7 +41,7 @@ def test_get_depth_from_acceleration_full(accel, component, expected_delta):
     neutral = accel.apply(lambda col: get_neutral_bias_at_border(col), axis=0)
     depth = get_depth_from_acceleration(neutral)
     delta = depth.max() - depth.min()
-    assert pytest.approx(delta[component], abs=1e-3) == expected_delta
+    assert pytest.approx(delta[component], abs=0.1) == expected_delta
 
 
 def test_get_depth_from_acceleration_partial(accel):

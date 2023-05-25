@@ -11,7 +11,8 @@ from .detect import get_acceleration_stop, get_acceleration_start, first_peak, n
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     """
     Double integrate the acceleration to calculate a depth profile
-    Assumes a starting position and velocity of zero.
+    Assumes a starting position and velocity of zero. Convert to cm
+    and return the data
 
     Args:
         acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis in g's without gravity
@@ -44,7 +45,7 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
                                  position_vec['Y-Axis'],
                                  position_vec['Z-Axis']])
         position_df['magnitude'] = np.linalg.norm(position_arr, axis=0)
-    return position_df
+    return position_df.mul(100)
 
 
 @time_series
@@ -83,7 +84,6 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     window_func = getattr(np, method)
     mid = int((stop + start) / 2)
     n_points = len(baro_depth)
-    baro_data = baro_depth.values
     top_search = baro_depth.iloc[:mid]
     default_top = np.where(top_search == top_search.max())[0][0]
     top = nearest_peak(baro_depth.values, start, default_index=default_top, height=-10, distance=100)

@@ -132,7 +132,7 @@ class LyteProfileV6:
                 df = pd.DataFrame.from_dict({'time':self.raw['time'],
                                              'acceleration':self.acceleration})
                 depth = get_depth_from_acceleration(df).reset_index()
-                self.raw['depth'] = depth[self._motion_detect_column].mul(100)
+                self.raw['depth'] = depth[self._motion_detect_column]
             return self.raw['depth']
 
         @property
