@@ -29,3 +29,16 @@ class TestLyteProfile:
         #plot_ts(profile.cropped['Sensor1'], events=[(e.name, e.index) for e in profile.events])
         print(profile)
         assert profile.surface.index == expected
+
+    @pytest.mark.parametrize('columns, expected', [
+        # Test old naming of accelerometer
+        (['acceleration'], 'acceleration'),
+        # Test newer naming
+        (['Y-Axis', 'X-Axis', 'Z-Axis'], 'Y-Axis'),
+        # Test no accelerometer
+        (['Sensor1', 'Sensor2'], None),
+    ])
+    def test_get_accelerometer_column(self, columns, expected):
+        """ Test the retrieval of the accelerometer column"""
+        result = LyteProfileV6.get_accelerometer_column(columns)
+        assert expected == result

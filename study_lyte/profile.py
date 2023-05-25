@@ -3,6 +3,8 @@ from enum import Enum
 import pandas as pd
 from pathlib import Path
 
+import pytest
+
 from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface
@@ -20,8 +22,12 @@ class Sensor(Enum):
 
 
 class LyteProfileV6:
-    def __init__(self, filename, surface_detection_offset=4.5, calibrations=None):
+    def __init__(self, filename, surface_detection_offset=4.5, calibration=None):
         """
+        Args:
+            filename: path to valid lyte probe csv.
+            surface_detection_offset: Geometric offset between nir sensors and tip in cm.
+            calibration: Dictionary of keys and polynomial coefficients to calibration sensors
         """
         self.filename = Path(filename)
         self.surface_detection_offset = surface_detection_offset
@@ -34,6 +40,9 @@ class LyteProfileV6:
         self._acceleration = None # No gravity acceleration
         self._cropped = None  # Full dataframe cropped to surface and stop
         self._distance_travelled = None # distance travelled in snow
+        self._moving_time = None # time the probe was moving
+        self._avg_velocity = None # avg velocity of the probe while in the snow
+
         self._datetime = None
         # Events
         self._start = None
@@ -42,16 +51,18 @@ class LyteProfileV6:
 
     @property
     def raw_df(self):
+        """
+        Pandas dataframe hold the data exactly as it read in.
+        """
         if self._df is None:
-            self._df, self._meta = read_csv(self.filename)
+            self._df, self._meta = read_csv(str(self.filename))
             self._df = self._df.rename(columns={'depth':'filtereddepth'})
         return self._df
 
     @property
     def cropped(self):
         """
-        Return dataset cropped to snow and depth zero-ed out at
-        surface
+        Provides the pandas dataframe cropped to the snow surface and the stop of motion
         """
         if self._cropped is None:
             # Crop and reset index so surface = index(0)
@@ -61,14 +72,17 @@ class LyteProfileV6:
 
     @property
     def metadata(self):
+        """
+        Returns a dictionary of all data held in the header portion of the csv
+        """
         if self._df is None:
-            self._df, self._meta = read_csv(self.filename)
+            self._df, self._meta = read_csv(str(self.filename))
         return self._meta
 
     @property
     def acceleration(self):
         """
-        Retrieve acceleration without gravity
+        Retrieve acceleration with gravity removed
         """
         # Assign the detection column if it is available
         if self._motion_detect_column is None:
@@ -87,7 +101,7 @@ class LyteProfileV6:
     @property
     def nir(self):
         """
-        Retrieve the Active NIR sensor with ambient removed
+        Retrieve the Active NIR sensor with ambient NIR removed
         """
         if 'nir' not in self.raw_df.columns:
             nir = remove_ambient(self.raw_df['Sensor3'], self.raw_df['Sensor2'])
@@ -123,7 +137,7 @@ class LyteProfileV6:
 
     @property
     def surface(self):
-        """ Return start event """
+        """ Return surface event """
         if self._surface is None:
             idx = get_nir_surface(self.nir)
             depth = self.depth.iloc[idx]
@@ -135,6 +149,19 @@ class LyteProfileV6:
         if self._distance_travelled is None:
             self._distance_travelled = self.cropped['depth'].max() - self.cropped['depth'].min()
         return self._distance_travelled
+
+    @property
+    def moving_time(self):
+        """Amount of time the probe was in motion"""
+        if self._moving_time is None:
+            self._moving_time = self.cropped['time'].max() - self.cropped['time'].min()
+        return self._moving_time
+    @property
+    def avg_velocity(self):
+        if self._avg_velocity is None:
+            self._avg_velocity = self.distance_traveled / self.moving_time
+        return self._avg_velocity
+
     @property
     def datetime(self):
         if self._datetime is None:
