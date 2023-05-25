@@ -1,6 +1,6 @@
 import pytest
 from os.path import join
-from study_lyte.profile import LyteProfileV6, Event
+from study_lyte.profile import LyteProfileV6, Sensor
 
 
 class TestLyteProfile:
@@ -80,9 +80,22 @@ class TestLyteProfile:
         # Test newer naming
         (['Y-Axis', 'X-Axis', 'Z-Axis'], 'Y-Axis'),
         # Test no accelerometer
-        (['Sensor1', 'Sensor2'], None),
+        (['Sensor1', 'Sensor2'], Sensor.UNAVAILABLE),
     ])
-    def test_get_accelerometer_column(self, columns, expected):
+    def test_get_motion_name(self, columns, expected):
         """ Test the retrieval of the accelerometer column"""
-        result = LyteProfileV6.get_accelerometer_column(columns)
-        assert expected == result
+        result = LyteProfileV6.get_motion_name(columns)
+        assert result == expected
+
+    @pytest.mark.parametrize('columns, expected', [
+        # Test old naming of accelerometer
+        (['acceleration'], ['acceleration']),
+        # Test newer naming
+        (['Y-Axis', 'X-Axis', 'Z-Axis'], ['X-Axis', 'Y-Axis', 'Z-Axis']),
+        # Test no accelerometer
+        (['Sensor1', 'Sensor2'], Sensor.UNAVAILABLE),
+    ])
+    def test_get_motion_name(self, columns, expected):
+        """ Test the retrieval of the accelerometer column"""
+        result = LyteProfileV6.get_acceleration_columns(columns)
+        assert result == expected

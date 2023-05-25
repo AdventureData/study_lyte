@@ -46,7 +46,8 @@ class LyteProfileV6:
             # Useful stats/info
             self._distance_traveled = None # distance travelled while moving
             self._distance_through_snow = None # Distance travelled while in snow
-            self._motion_detect_column = None # column name containing accel data
+            self._motion_detect_name = None # column name containing accel data dir of travel
+            self._acceleration_names = None # All columns containing accel data
             self._moving_time = None # time the probe was moving
             self._avg_velocity = None # avg velocity of the probe while in the snow
 
@@ -55,6 +56,12 @@ class LyteProfileV6:
             self._start = None
             self._stop = None
             self._surface = None
+
+        @classmethod
+        def from_dataframe(cls, df):
+            profile = LyteProfileV6(None)
+            profile._df = df
+            return profile
 
         @property
         def raw(self):
@@ -77,20 +84,29 @@ class LyteProfileV6:
             return self._meta
 
         @property
+        def motion_detect_name(self):
+            """Return all the names of acceleration columns"""
+            if self._motion_detect_name is None:
+                self._motion_detect_name = self.get_motion_name(self.raw.columns)
+            return self._motion_detect_name
+
+        @property
+        def acceleration_names(self):
+            """Return all the names of acceleration columns"""
+            if self._acceleration_names is None:
+                self._acceleration_names = self.get_acceleration_columns(self.raw.columns)
+            return self._acceleration_names
+
+        @property
         def acceleration(self):
             """
             Retrieve acceleration with gravity removed
             """
             # Assign the detection column if it is available
-            if self._motion_detect_column is None:
-                self._motion_detect_column = \
-                    self.get_accelerometer_column(self.raw.columns) or \
-                Sensor.UNAVAILABLE
-
             if self._acceleration is None:
-                if self._motion_detect_column != Sensor.UNAVAILABLE:
+                if self.motion_detect_name != Sensor.UNAVAILABLE:
                     # Remove gravity
-                    self._acceleration = get_neutral_bias_at_border(self.raw[self._motion_detect_column])
+                    self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name])
                 else:
                     self._acceleration = Sensor.UNAVAILABLE
             return self._acceleration
@@ -132,8 +148,13 @@ class LyteProfileV6:
                 df = pd.DataFrame.from_dict({'time':self.raw['time'],
                                              'acceleration':self.acceleration})
                 depth = get_depth_from_acceleration(df).reset_index()
-                self.raw['depth'] = depth[self._motion_detect_column]
+                self.raw['depth'] = depth[self._motion_detect_name]
             return self.raw['depth']
+
+        @property
+        def time(self):
+            """Return the sample time data"""
+            return self.raw['time']
 
         @property
         def start(self):
@@ -190,6 +211,7 @@ class LyteProfileV6:
             if self._moving_time is None:
                 self._moving_time = self.stop.time - self.start.time
             return self._moving_time
+
         @property
         def avg_velocity(self):
             if self._avg_velocity is None:
@@ -210,23 +232,40 @@ class LyteProfileV6:
             return [self.start, self.stop, self.surface.nir, self.surface.force]
 
         @staticmethod
-        def get_accelerometer_column(columns):
+        def get_motion_name(columns):
             """
-            Find a column called acceleration or Y-Axis to handle variations in formatting
-            of files
+            Find a column containing acceleration data sometimes called
+            acceleration or Y-Axis to handle variations in formatting of file
             """
             candidates = [c for c in columns if c.lower() in ['acceleration', 'y-axis']]
             if candidates:
                 return candidates[0]
             else:
-                return None
+                return Sensor.UNAVAILABLE
+
+        @staticmethod
+        def get_acceleration_columns(columns):
+            """
+            Find a columns containing acceleration data sometimes called
+            acceleration or X,Y,Z-Axis to handle variations in formatting of file
+            """
+            candidates = [c for c in ['acceleration', 'X-Axis', 'Y-Axis', 'Z-Axis'] if c in columns]
+            if candidates:
+                return candidates
+            else:
+                return Sensor.UNAVAILABLE
 
         def __repr__(self):
-            msg = '\n| {:<10} {:<10} \n'
-            header = f'+---- {self.filename.name} ----+\n'
+            msg = '| {:<15} {:<20} |\n'
+            n_chars = int((39 - len(self.filename.name)) / 2)
+            s =  '-'* n_chars
+            header = f'\n{s} {self.filename.name} {s}\n'
             profile_string = header
             profile_string += msg.format('Recorded', f'{self.datetime.isoformat()}')
             profile_string += msg.format('Points', f'{len(self.raw.index):,}')
-            profile_string += msg.format('Depth', f'{self.distance_traveled:0.1f} cm')
-            profile_string += '-' * len(header) + '\n'
+            profile_string += msg.format('Moving Time', f'{self.moving_time:0.1f} s')
+            profile_string += msg.format('Avg. Speed', f'{self.avg_velocity:0.0f} cm/s')
+            profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
+            profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
+            profile_string += '-' * (len(header)-2) + '\n'
             return profile_string
