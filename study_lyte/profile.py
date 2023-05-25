@@ -44,7 +44,7 @@ class LyteProfileV6:
             self._nir = None
 
             # Useful stats/info
-            self._distance_travelled = None # distance travelled while moving
+            self._distance_traveled = None # distance travelled while moving
             self._distance_through_snow = None # Distance travelled while in snow
             self._motion_detect_column = None # column name containing accel data
             self._moving_time = None # time the probe was moving
@@ -123,7 +123,7 @@ class LyteProfileV6:
                 self._force = self._force.iloc[self.surface.force.index:self.stop.index].reset_index()
                 self._force = self._force.drop(columns='index')
                 self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
-                
+
             return self._force
 
         @property
@@ -173,15 +173,15 @@ class LyteProfileV6:
             return self._surface
 
         @property
-        def distance_travelled(self):
-            if self._distance_travelled is None:
-                self._distance_travelled = abs(self.start.depth - self.stop.depth)
-            return self._distance_travelled
+        def distance_traveled(self):
+            if self._distance_traveled is None:
+                self._distance_traveled = abs(self.start.depth - self.stop.depth)
+            return self._distance_traveled
 
         @property
         def distance_through_snow(self):
             if self._distance_through_snow is None:
-                self._distance_through_snow = abs(self.surface.nir.depth - self.start.depth)
+                self._distance_through_snow = abs(self.surface.nir.depth - self.stop.depth)
             return self._distance_through_snow
 
         @property

@@ -30,6 +30,34 @@ class TestLyteProfile:
         nir_surface = profile.surface.nir
         assert profile.surface.nir.index ==expected_idx
 
+    @pytest.mark.parametrize('filename, expected', [
+        ('kaslo.csv', 118.5)
+    ])
+    def test_distance_through_snow(self, profile, expected):
+        delta = profile.distance_through_snow
+        assert pytest.approx(delta, abs=0.5) == expected
+
+    @pytest.mark.parametrize('filename, expected', [
+        ('kaslo.csv', 123)
+    ])
+    def test_distance_traveled(self, profile, expected):
+        delta = profile.distance_traveled
+        assert pytest.approx(delta, abs=0.5) == expected
+
+    @pytest.mark.parametrize('filename, expected', [
+        ('kaslo.csv', 112)
+    ])
+    def test_avg_velocity(self, profile, expected):
+        delta = profile.avg_velocity
+        assert pytest.approx(delta, abs=0.5) == expected
+
+    @pytest.mark.parametrize('filename, expected', [
+        ('kaslo.csv', 1.1)
+    ])
+    def test_moving_time(self, profile, expected):
+        delta = profile.moving_time
+        assert pytest.approx(delta, abs=0.01) == expected
+
     @pytest.mark.parametrize('filename, expected_points, mean_force', [
         ('kaslo.csv', 17269, 3548.3813)
     ])
