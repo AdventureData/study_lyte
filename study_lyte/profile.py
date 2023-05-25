@@ -114,14 +114,16 @@ class LyteProfileV6:
             calibrated force and depth as a pandas dataframe cropped to the snow surface and the stop of motion
             """
             if self._force is None:
-                if 'Sensor1' not in self.calibration.keys():
-                    raise ValueError("No calibration data was provided to convert Sensor1 to force.")
-                else:
+                if 'Sensor1' in self.calibration.keys():
                     force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'])
-                    self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
-                    self._force = self._force.iloc[self.surface.force.index:self.stop.index].reset_index()
-                    self._force = self._force.drop(columns='index')
-                    self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
+                else:
+                    force = self.raw['Sensor1'].values
+
+                self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
+                self._force = self._force.iloc[self.surface.force.index:self.stop.index].reset_index()
+                self._force = self._force.drop(columns='index')
+                self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
+                
             return self._force
 
         @property
