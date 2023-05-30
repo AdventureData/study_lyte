@@ -95,7 +95,7 @@ def plot_events(ax, profile_events, plot_type='normal', event_alpha=0.6):
         line_fn(event.time, linestyle=style.linestyle, color=style.color, label=style.label, alpha=event_alpha)
 
 
-def plot_ts(data, data_label=None, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0, color=None):
+def plot_ts(data, data_label=None, time_data=None, events=None, thresholds=None, features=None, show=True, ax=None, alpha=1.0, color=None):
     if ax is None:
         fig, ax = plt.subplots(1)
         ax.grid(True)
@@ -121,6 +121,9 @@ def plot_ts(data, data_label=None, time_data=None, events=None, features=None, s
             else:
                 v = event_idx
             ax.axvline(v, color=s.color, linestyle=s.linestyle, label=name)
+    if thresholds is not None:
+        for name, tr in thresholds:
+            ax.axhline(tr, label=name, alpha=0.2, linestyle='--')
 
     if features is not None:
         ydata = [data[f] for f in features]

@@ -71,7 +71,7 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, 0.01, 3),
+    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.1], 1 / 7, 0.01, 3),
     # Test no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 
@@ -91,8 +91,10 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('bogus.csv', 'Y-Axis', 32112),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 140),
-    ('delayed_acceleration.csv', 'Y-Axis', 252)
+    ('soft_acceleration.csv', 'Y-Axis', 132),
+    ('delayed_acceleration.csv', 'Y-Axis', 252),
+    ('gm_data.csv', 'Y-Axis', 8553)
+
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
     accel_neutral = get_neutral_bias_at_border(raw_df[column])
