@@ -10,7 +10,7 @@ def first_peak(arr, default_index=1, **find_peak_kwargs):
     Finds peaks and a return the first found. if none are found
     return the default index
     """
-    pk_idx, pk_hgt = find_peaks(np.abs(arr), **find_peak_kwargs)
+    pk_idx, pk_hgt = find_peaks(arr, **find_peak_kwargs)
     if len(pk_idx) > 0:
         pk = pk_idx[0]
     else:
@@ -127,7 +127,7 @@ def get_acceleration_start(acceleration, threshold=-0.01, max_threshold=0.02):
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, height=0.3, distance=10):
+def get_acceleration_stop(acceleration, threshold=0.02, max_threshold=0.03):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -139,15 +139,15 @@ def get_acceleration_stop(acceleration, height=0.3, distance=10):
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
-    accel_neutral = acceleration[~np.isnan(acceleration)]
+    accel_neutral = -1 * acceleration[~np.isnan(acceleration)]
+    n_points = get_points_from_fraction(len(acceleration), 0.005)
+    max_ind = first_peak(accel_neutral[::-1], height=0.3, distance=10)
+    max_ind = len(acceleration) - max_ind
 
-    # Find the first real negative peak starting at the end
-    ind = first_peak(-1 * accel_neutral[::-1], default_index=0, height=height, distance=distance)
-    if ind == 0:
-        acceleration_stop = len(accel_neutral) - 1
-    else:
-        acceleration_stop = len(accel_neutral) - ind + 1
-
+    acceleration_stop = get_signal_event(accel_neutral[max_ind-1:], threshold=threshold, max_threshold=max_threshold,
+                                          n_points=n_points,
+                                          search_direction='backward')
+    acceleration_stop = acceleration_stop + max_ind
     return acceleration_stop
 
 

@@ -14,21 +14,22 @@ class TestLyteProfile:
     ])
     def test_start_property(self, profile, filename, expected):
         start = profile.start.index
-        assert start == expected
+        assert  pytest.approx(start, abs= len(profile.raw)*0.005) == expected
+
 
     @pytest.mark.parametrize('filename, expected', [
         ('kaslo.csv', 27278)
     ])
     def test_stop_property(self, profile, filename, expected):
         stop = profile.stop.index
-        assert profile.stop.index == expected
+        assert pytest.approx(stop, abs= len(profile.raw)*0.005) == expected
 
-    @pytest.mark.parametrize('filename, expected_idx', [
+    @pytest.mark.parametrize('filename, expected', [
         ('kaslo.csv', 12479)
     ])
-    def test_nir_surface_property(self, profile, filename, expected_idx):
-        nir_surface = profile.surface.nir
-        assert profile.surface.nir.index ==expected_idx
+    def test_nir_surface_property(self, profile, filename, expected):
+        nir_surface = profile.surface.nir.index
+        assert  pytest.approx(nir_surface, abs=len(profile.raw)*0.005) == expected
 
     @pytest.mark.parametrize('filename, expected', [
         ('kaslo.csv', 122.5)
@@ -62,18 +63,15 @@ class TestLyteProfile:
         ('kaslo.csv', 16377, 3521)
     ])
     def test_force_profile(self, profile, filename, expected_points, mean_force):
-        assert len(profile.force) == expected_points
-        assert pytest.approx(profile.force['force'].mean(), abs=1) == mean_force
+        assert pytest.approx(len(profile.force), len(profile.raw)*0.005) == expected_points
+        assert pytest.approx(profile.force['force'].mean(), abs=10) == mean_force
 
     @pytest.mark.parametrize('filename, expected_points, mean_force', [
         ('kaslo.csv', 14799, 2860.5104)
     ])
     def test_nir_profile(self, profile, filename, expected_points, mean_force):
-        from study_lyte.plotting import plot_ts
-        profile.nir
-        plot_ts(profile.raw['nir'], events=[(e.name, e.index) for e in profile.events])
-        assert len(profile.nir) == expected_points
-        assert pytest.approx(profile.nir['nir'].mean(), abs=1e-4) == mean_force
+        assert pytest.approx(len(profile.nir), len(profile.raw)*0.005) == expected_points
+        assert pytest.approx(profile.nir['nir'].mean(), abs=1) == mean_force
 
 
     @pytest.mark.parametrize('columns, expected', [

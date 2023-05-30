@@ -79,8 +79,9 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
     accel_neutral = get_neutral_bias_at_border(df['acceleration'],
-                                               fractional_basis=fractional_basis)
-    idx = get_acceleration_stop(accel_neutral, height=threshold)
+                                               fractional_basis=fractional_basis,
+                                               direction='backward')
+    idx = get_acceleration_stop(accel_neutral, threshold=threshold)
 
     assert idx == expected
 
@@ -90,7 +91,7 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('bogus.csv', 'Y-Axis', 32112),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 131),
+    ('soft_acceleration.csv', 'Y-Axis', 140),
     ('delayed_acceleration.csv', 'Y-Axis', 252)
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
@@ -107,12 +108,12 @@ def test_get_acceleration_stop_time_index(raw_df):
     """
     fract = 0.01
     # Without time index
-    accel_neutral = get_neutral_bias_at_border(raw_df['Y-Axis'], fractional_basis=fract)
+    accel_neutral = get_neutral_bias_at_border(raw_df['Y-Axis'], fractional_basis=fract, direction='backward')
     idx1 = get_acceleration_stop(accel_neutral)
     # with time index
     df = raw_df.set_index('time')
-    accel_neutral = get_neutral_bias_at_border(df['Y-Axis'], fractional_basis=fract)
-    idx2 = get_acceleration_stop(accel_neutral)
+    accel_neutral2 = get_neutral_bias_at_border(df['Y-Axis'], fractional_basis=fract, direction='backward')
+    idx2 = get_acceleration_stop(accel_neutral2)
 
     assert idx1 == idx2
 

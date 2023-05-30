@@ -181,7 +181,8 @@ class LyteProfileV6:
         def stop(self):
             """ Return stop event """
             if self._stop is None:
-                idx = get_acceleration_stop(self.acceleration)
+                backward_accel = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='backward')
+                idx = get_acceleration_stop(backward_accel)
                 depth = self.depth.iloc[idx]
                 self._stop = Event(name='stop', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
             return self._stop

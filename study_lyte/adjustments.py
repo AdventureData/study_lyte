@@ -41,7 +41,7 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.01
     Returns:
         bias_adj: bias adjusted data to near zero
     """
-    bias = get_directional_mean(series, fractional_basis=fractional_basis, direction=direction)
+    bias = get_directional_mean(series.values, fractional_basis=fractional_basis, direction=direction)
     bias_adj = series - bias
     return bias_adj
 

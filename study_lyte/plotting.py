@@ -26,6 +26,9 @@ class EventStyle(Enum):
     def linestyle(self):
         return self.value[-1]
 
+    @property
+    def label(self):
+        return self.name.title()
 
 class SensorStyle(Enum):
     """
@@ -49,7 +52,7 @@ class SensorStyle(Enum):
 
     @property
     def label(self):
-        return self.value[1]
+        return self.value[1].title()
 
     @property
     def color(self):
@@ -59,7 +62,7 @@ class SensorStyle(Enum):
     def from_column(cls, column):
         result = cls.UNKNOWN
         for e in cls:
-            if e.column == column.upper():
+            if e.column.upper() == column.upper():
                 result = e
                 break
         return result
@@ -89,7 +92,7 @@ def plot_events(ax, profile_events, plot_type='normal', event_alpha=0.6):
 
     for event in profile_events:
         style = EventStyle.from_name(event.name)
-        line_fn(event.time, linestyle=style.linestyle, color=style.color, label=style.name, alpha=event_alpha)
+        line_fn(event.time, linestyle=style.linestyle, color=style.color, label=style.label, alpha=event_alpha)
 
 
 def plot_ts(data, data_label=None, time_data=None, events=None, features=None, show=True, ax=None, alpha=1.0, color=None):
