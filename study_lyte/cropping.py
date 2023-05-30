@@ -24,6 +24,7 @@ def crop_to_motion(df: pd.DataFrame, detect_col='Y-Axis', start_kwargs=None, sto
 
     neutral = get_neutral_bias_at_border(df[detect_col])
     start = get_acceleration_start(neutral, **start_kwargs)
+    neutral = get_neutral_bias_at_border(df[detect_col], direction='backward')
     stop = get_acceleration_stop(neutral, **stop_kwargs)
     cropped = df.iloc[start:stop]
     return cropped

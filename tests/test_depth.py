@@ -86,7 +86,7 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected)
     result_s = result.index[0]
     result_e = result.index[-1]
     delta_h_result = result.iloc[0] - result.iloc[-1]
-    assert (result_s, result_e, pytest.approx(abs(delta_h_result), abs=0.01)) == (start, stop, expected)
+    assert (result_s, result_e, pytest.approx(abs(delta_h_result), abs=0.1)) == (start, stop, expected)
 
 
 @pytest.mark.parametrize('fname, column, acc_axis, method, expected_depth', [

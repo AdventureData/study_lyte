@@ -133,8 +133,8 @@ def get_acceleration_stop(acceleration, threshold=0.02, max_threshold=0.03):
     threshold of absolute normalized signal
     Args:
         acceleration:pandas series of acceleration data
-        height: Float in g's for minimum peak findable
-        distance: Minimum distance between peaks
+        threshold: Float in g's for minimum to consider
+        max_threshold: Max threshold to consider
     Return:
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
