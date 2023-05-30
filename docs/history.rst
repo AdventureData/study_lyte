@@ -26,4 +26,10 @@ Initial Development (2022-01-29)
 * Added in resampling tools
 * Improved testing
 
+0.5.0 (2023-05-30)
+--------------------------------
 
+* Reduction of repeat calcs
+* Added a top level profile class to manage readings
+* Added in more plotting tools
+* Improved testing

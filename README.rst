@@ -29,5 +29,5 @@ Features
 * Read/Write Lyte probe data files with metadata
 * Functions for detecting start and stop
 * Snow surface detection
-
+* Profile class for handling entire measurement
 
