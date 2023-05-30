@@ -99,7 +99,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
     else:
         # Return the first value matching the conditions
         event_idx = ind[-1]
-        
+
     # Invert the index
     if 'backward' in search_direction:
         event_idx = len(arr) - 1 - event_idx

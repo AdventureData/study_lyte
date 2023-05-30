@@ -202,7 +202,7 @@ class LyteProfileV6:
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
                 f_idx = np.abs(self.depth - force_surface_depth).argmin()
-                force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[idx])
+                force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
                 self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
             return self._surface
 
