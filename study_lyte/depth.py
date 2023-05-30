@@ -8,19 +8,15 @@ from .detect import get_acceleration_stop, get_acceleration_start, first_peak, n
 
 
 @time_series
-def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis: float = 0.01) -> pd.DataFrame:
+def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     """
     Double integrate the acceleration to calculate a depth profile
-    Assumes a starting position and velocity of zero.
+    Assumes a starting position and velocity of zero. Convert to cm
+    and return the data
 
     Args:
-        acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis in g's
-        fractional_basis: fraction of the beginning of data to calculate a bias adjustment
+        acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis in g's without gravity
 
-    Returns:
-
-    Args:
-        acceleration_df: Pandas Dataframe containing X-Axis, Y-Axis, Z-Axis or acceleration
     Return:
         position_df: pandas Dataframe containing the same input axes plus magnitude of the result position
     """
@@ -30,10 +26,6 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
     # Convert from g's to m/s2
     g = -9.81
     acc = acceleration_df[acceleration_columns].mul(g)
-
-    # Remove off local gravity
-    for c in acc.columns:
-        acc[c] = get_neutral_bias_at_border(acc[c].values, fractional_basis)
 
     # Calculate position
     position_vec = {}
@@ -53,25 +45,7 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame, fractional_basis:
                                  position_vec['Y-Axis'],
                                  position_vec['Z-Axis']])
         position_df['magnitude'] = np.linalg.norm(position_arr, axis=0)
-    return position_df
-
-
-@time_series
-def get_average_depth(df, acc_axis='Y-Axis', depth_column='depth') -> pd.DataFrame:
-    """
-    Calculates the average between the barometer and the accelerometer profile
-    Args:
-        df: Timeseries df containing Acceleration and barometer
-        acc_axis: Axis to compute the depth from accelerometer
-        depth_column: Barometer depth column
-    Returns:
-        depth: Dataframe containing depth in cm
-    """
-    depth = get_depth_from_acceleration(df[[acc_axis]]) * 100
-    depth[depth_column] = get_neutral_bias_at_border(df[depth_column], fractional_basis=0.005)
-    depth['depth'] = depth[[depth_column, acc_axis]].mean(axis=1)
-    depth['depth'] = get_neutral_bias_at_border(depth['depth'], fractional_basis=0.005)
-    return depth[['depth']]
+    return position_df.mul(100)
 
 
 @time_series
@@ -95,35 +69,32 @@ def get_fitted_depth(df: pd.DataFrame, column='depth', poly_deg=5) -> pd.DataFra
     df[f'fitted_{column}'] = poly(df.index)
     return df
 
-
 @time_series
-def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanmedian'):
+def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     """
-    The Barometer depth is often stretched. Use the start and stop of the
+    The Barometer depth is often stretched in time. Use the start and stop of the
     Accelerometer to constrain the peak/valley of the barometer, then rescale
-    it by the tails
+    it by the tails.
+    Args:
+        baro_depth: Pandas series of barometer calculated depth indexed by time
+        start: Index of start of motion to constrain the barometer
+        stop: Index of stop of motion to constrain barometer
+        method: aggregating method applied to data before the start and after stop
     """
-    df = df.reset_index()
-    df[baro] = df[baro] - df[baro].max()
-
     window_func = getattr(np, method)
-
-    # Hold a little higher reqs for start when rescaling the baro
-    start = get_acceleration_start(df[[acc_axis]], max_threshold=0.03)
-    stop = get_acceleration_stop(df[[acc_axis]])
-    mid = int((stop+start) / 2)
-
-    top_search = df[baro].iloc[:mid]
+    mid = int((stop + start) / 2)
+    n_points = len(baro_depth)
+    top_search = baro_depth.iloc[:mid]
     default_top = np.where(top_search == top_search.max())[0][0]
-    top = nearest_peak(df[baro].values, start, default_index=default_top, height=-10, distance=100)
+    top = nearest_peak(baro_depth.values, start, default_index=default_top, height=-10, distance=100)
     # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
-    soft_stop = mid + int(0.1*len(df.index))
-    if soft_stop > len(df.index):
-        soft_stop = len(df.index) - 1
+    soft_stop = mid + int(0.1 * n_points)
+    if soft_stop > len(baro_depth.index):
+        soft_stop = len(baro_depth.index) - 1
 
-    valley_search = df[baro].iloc[mid:].values
+    valley_search = baro_depth.iloc[mid:].values
     v_min = valley_search.min()
     vmin_idx = np.where(valley_search == v_min)[0][0]
     bottom = nearest_peak(-1 * valley_search, stop - mid, default_index=vmin_idx, height=-10, distance=100)
@@ -132,30 +103,29 @@ def get_constrained_baro_depth(df, baro='depth', acc_axis='Y-Axis', method='nanm
     if bottom == stop:
         bot_mean_idx = bottom
 
-    elif bottom >= len(df.index) - 1:
-        bot_mean_idx = len(df.index) - 1
+    elif bottom >= n_points - 1:
+        bot_mean_idx = n_points - 1
 
     else:
         bot_mean_idx = bottom - 1
     # Rescale
-    top_mean = window_func(df[baro].iloc[:top + 1])
-    bottom_mean = window_func(df[baro].iloc[bot_mean_idx:])
+    top_mean = window_func(baro_depth.iloc[:top + 1])
+    bottom_mean = window_func(baro_depth.iloc[bot_mean_idx:])
     delta_new = top_mean - bottom_mean
-    delta_old = df[baro].iloc[top] - df[baro].iloc[bottom]
+    delta_old = baro_depth.iloc[top] - baro_depth.iloc[bottom]
 
-    depth_values = df[baro].iloc[top:bottom + 1].values
-    baro_time = np.linspace(df['time'].iloc[start], df['time'].iloc[stop], len(depth_values))
-    result = pd.DataFrame.from_dict({baro: depth_values, 'time': baro_time})
-    result[baro] = (result[baro] - df[baro].iloc[bottom]).div(delta_old).mul(delta_new)
+    depth_values = baro_depth.iloc[top:bottom + 1].values
+    baro_time = np.linspace(baro_depth.index[start], baro_depth.index[stop], len(depth_values))
+    result = pd.DataFrame.from_dict({'baro': depth_values, 'time': baro_time})
+    result['baro'] = (result['baro'] - baro_depth.iloc[bottom]).div(delta_old).mul(delta_new)
 
-    const = result[baro]
+    constrained = result.set_index('time')
     #assume_no_upward_motion(result[baro])
-    const = const - const.iloc[0]
+    constrained = constrained - constrained.iloc[0]
     # from .plotting import plot_constrained_baro
     # pos = get_depth_from_acceleration(df).mul(100)
     # pos = pos.reset_index()
     # plot_constrained_baro(df, result, const, pos, top, bottom, start, stop,
     #                       baro=baro, acc_axis=acc_axis)
 
-    result[baro] = const
-    return result
+    return constrained

@@ -1,6 +1,6 @@
 from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
 from study_lyte.io import read_csv
-from study_lyte.adjustments import remove_ambient
+from study_lyte.adjustments import remove_ambient, get_neutral_bias_at_border
 import pytest
 import numpy as np
 import pandas as pd
@@ -48,8 +48,9 @@ def test_get_signal_event(data, threshold, direction, max_threshold, n_points, e
 ])
 def test_get_acceleration_start(data, fractional_basis, threshold, max_threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
-    idx = get_acceleration_start(df['acceleration'],
-                                 fractional_basis=fractional_basis,
+    accel_neutral = get_neutral_bias_at_border(df['acceleration'],
+                                               fractional_basis=fractional_basis)
+    idx = get_acceleration_start(accel_neutral,
                                  threshold=threshold,
                                  max_threshold=max_threshold)
     assert idx == expected
@@ -63,22 +64,24 @@ def test_get_acceleration_start(data, fractional_basis, threshold, max_threshold
     ('hard_surface_hard_stop.csv', 5057)
 ])
 def test_get_acceleration_start_messy(raw_df, start_idx):
-    idx = get_acceleration_start(raw_df[['Y-Axis']])
+    accel_neutral = get_neutral_bias_at_border(raw_df['Y-Axis'])
+    idx = get_acceleration_start(accel_neutral)
     assert pytest.approx(idx, abs=int(0.01 * len(raw_df.index))) == start_idx
 
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.0, -1.1, -0.9, -1.2], 1 / 7, 0.01, 3),
+    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.1], 1 / 7, 0.01, 3),
     # Test no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 
 ])
 def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})
-    idx = get_acceleration_stop(df['acceleration'],
-                                fractional_basis=fractional_basis,
-                                height=threshold)
+    accel_neutral = get_neutral_bias_at_border(df['acceleration'],
+                                               fractional_basis=fractional_basis,
+                                               direction='backward')
+    idx = get_acceleration_stop(accel_neutral, threshold=threshold)
 
     assert idx == expected
 
@@ -88,11 +91,14 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('bogus.csv', 'Y-Axis', 32112),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 131),
-    ('delayed_acceleration.csv', 'Y-Axis', 252)
+    ('soft_acceleration.csv', 'Y-Axis', 132),
+    ('delayed_acceleration.csv', 'Y-Axis', 252),
+    ('gm_data.csv', 'Y-Axis', 8553)
+
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
-    idx = get_acceleration_stop(raw_df[column])
+    accel_neutral = get_neutral_bias_at_border(raw_df[column])
+    idx = get_acceleration_stop(accel_neutral)
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.03 * len(raw_df.index))) == stop_idx
 
@@ -102,11 +108,14 @@ def test_get_acceleration_stop_time_index(raw_df):
     """
     Confirm the result is independent of the time index being set or not
     """
+    fract = 0.01
     # Without time index
-    idx1 = get_acceleration_stop(raw_df['Y-Axis'], fractional_basis=0.01)
+    accel_neutral = get_neutral_bias_at_border(raw_df['Y-Axis'], fractional_basis=fract, direction='backward')
+    idx1 = get_acceleration_stop(accel_neutral)
     # with time index
     df = raw_df.set_index('time')
-    idx2 = get_acceleration_stop(df['Y-Axis'], fractional_basis=0.01)
+    accel_neutral2 = get_neutral_bias_at_border(df['Y-Axis'], fractional_basis=fract, direction='backward')
+    idx2 = get_acceleration_stop(accel_neutral2)
 
     assert idx1 == idx2
 

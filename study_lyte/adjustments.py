@@ -41,7 +41,7 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.01
     Returns:
         bias_adj: bias adjusted data to near zero
     """
-    bias = get_directional_mean(series, fractional_basis=fractional_basis, direction=direction)
+    bias = get_directional_mean(series.values, fractional_basis=fractional_basis, direction=direction)
     bias_adj = series - bias
     return bias_adj
 
@@ -112,11 +112,7 @@ def remove_ambient(active, ambient, min_ambient_range=50, direction='forward'):
 
     else:
         clean = active
-    # from .plotting import plot_ts
-    # ax = plot_ts(norm_ambient, show=False)
-    # ax = plot_ts(norm_active, ax=ax, show=False)
-    # #ax.set_ylim(-1000, 4096)
-    # ax = plot_ts(norm_active - norm_ambient, ax=ax, show=True)
+
     return clean
 
 
