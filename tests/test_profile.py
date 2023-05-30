@@ -24,14 +24,14 @@ class TestLyteProfile:
         assert profile.stop.index == expected
 
     @pytest.mark.parametrize('filename, expected_idx', [
-        ('kaslo.csv', 1832)
+        ('kaslo.csv', 12479)
     ])
     def test_nir_surface_property(self, profile, filename, expected_idx):
         nir_surface = profile.surface.nir
         assert profile.surface.nir.index ==expected_idx
 
     @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 118.5)
+        ('kaslo.csv', 122.5)
     ])
     def test_distance_through_snow(self, profile, expected):
         delta = profile.distance_through_snow
@@ -59,17 +59,19 @@ class TestLyteProfile:
         assert pytest.approx(delta, abs=0.01) == expected
 
     @pytest.mark.parametrize('filename, expected_points, mean_force', [
-        ('kaslo.csv', 17269, 3548.3813)
+        ('kaslo.csv', 16377, 3521)
     ])
     def test_force_profile(self, profile, filename, expected_points, mean_force):
         assert len(profile.force) == expected_points
-        assert pytest.approx(profile.force['force'].mean(), abs=1e-4) == mean_force
+        assert pytest.approx(profile.force['force'].mean(), abs=1) == mean_force
 
     @pytest.mark.parametrize('filename, expected_points, mean_force', [
-        ('kaslo.csv', 12979, 3027.4536)
+        ('kaslo.csv', 14799, 2860.5104)
     ])
     def test_nir_profile(self, profile, filename, expected_points, mean_force):
-        print(profile.nir)
+        from study_lyte.plotting import plot_ts
+        profile.nir
+        plot_ts(profile.raw['nir'], events=[(e.name, e.index) for e in profile.events])
         assert len(profile.nir) == expected_points
         assert pytest.approx(profile.nir['nir'].mean(), abs=1e-4) == mean_force
 

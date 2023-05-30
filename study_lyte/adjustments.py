@@ -112,11 +112,7 @@ def remove_ambient(active, ambient, min_ambient_range=50, direction='forward'):
 
     else:
         clean = active
-    # from .plotting import plot_ts
-    # ax = plot_ts(norm_ambient, show=False)
-    # ax = plot_ts(norm_active, ax=ax, show=False)
-    # #ax.set_ylim(-1000, 4096)
-    # ax = plot_ts(norm_active - norm_ambient, ax=ax, show=True)
+
     return clean
 
 
