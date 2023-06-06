@@ -7,7 +7,7 @@ import numpy as np
 
 from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration
-from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface
+from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
 from .depth import get_depth_from_acceleration
 
 @dataclass
@@ -157,10 +157,14 @@ class LyteProfileV6:
         @property
         def depth(self):
             if 'depth' not in self.raw.columns:
-                df = pd.DataFrame.from_dict({'time':self.raw['time'],
-                                             self.motion_detect_name:self.acceleration})
-                depth = get_depth_from_acceleration(df).reset_index()
-                self.raw['depth'] = depth[self.motion_detect_name]
+                if self.motion_detect_name != Sensor.UNAVAILABLE:
+                    df = pd.DataFrame.from_dict({'time':self.raw['time'],
+                                                 self.motion_detect_name:self.acceleration})
+                    depth = get_depth_from_acceleration(df).reset_index()
+                    self.raw['depth'] = depth[self.motion_detect_name]
+                else:
+                    self.raw['depth'] = self.raw['filtereddepth']
+
             return self.raw['depth']
 
         @property
@@ -172,18 +176,28 @@ class LyteProfileV6:
         def start(self):
             """ Return start event """
             if self._start is None:
-                idx = get_acceleration_start(self.acceleration)
-                depth = self.depth.iloc[idx]
+                if self.motion_detect_name != Sensor.UNAVAILABLE:
+                    idx = get_acceleration_start(self.acceleration)
+                    depth = self.depth.iloc[idx]
+                else:
+                    idx=0
+                    depth=0
+
                 self._start = Event(name='start', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
+
             return self._start
 
         @property
         def stop(self):
             """ Return stop event """
             if self._stop is None:
-                backward_accel = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='backward')
-                idx = get_acceleration_stop(backward_accel)
-                depth = self.depth.iloc[idx]
+                if self.motion_detect_name != Sensor.UNAVAILABLE:
+                    backward_accel = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='backward')
+                    idx = get_acceleration_stop(backward_accel)
+                    depth = self.depth.iloc[idx]
+                else:
+                    idx = get_nir_stop(self.raw['Sensor3'])
+                    depth = self.depth.iloc[idx]
                 self._stop = Event(name='stop', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
             return self._stop
 
@@ -298,3 +312,5 @@ class LyteProfileV6:
         def __repr__(self):
             profile_str = f"LyteProfile (Recorded {len(self.raw):,} points, {self.datetime.isoformat()})"
             return profile_str
+
+

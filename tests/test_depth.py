@@ -5,7 +5,7 @@ import pytest
 from study_lyte.io import read_csv
 from study_lyte.detect import get_acceleration_start, get_acceleration_stop
 from study_lyte.depth import get_depth_from_acceleration, get_fitted_depth, \
-    get_constrained_baro_depth
+    get_constrained_baro_depth, DepthTimeseries
 from study_lyte.adjustments import assume_no_upward_motion, get_neutral_bias_at_border
 
 @pytest.fixture(scope='session')
@@ -110,3 +110,17 @@ def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, method, expe
     result = get_constrained_baro_depth(raw_df.set_index('time')[column], start, stop, method=method)
     delta_d = abs(result.max() - result.min())
     assert pytest.approx(delta_d, abs=3) == expected_depth
+
+
+@pytest.mark.parametrize('fname, column, acc_axis, total_depth, min_velocity, max_velocity', [
+    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 93.945, 8.918, 164.090),
+])
+def test_depth_timeseries(raw_df, fname, column, acc_axis, total_depth, min_velocity, max_velocity):
+    neutral = get_neutral_bias_at_border(raw_df[acc_axis])
+    start = get_acceleration_start(neutral)
+    neutral = get_neutral_bias_at_border(raw_df[acc_axis], direction='backward')
+    stop = get_acceleration_stop(neutral)
+    depth = DepthTimeseries(raw_df[['time', column]].set_index('time'), start, stop)
+    assert pytest.approx(depth.distance_traveled, abs=1e-2) == total_depth
+    assert pytest.approx(depth.velocity_range.min, abs=1e-2) == min_velocity
+    print('')

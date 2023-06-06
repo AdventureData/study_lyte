@@ -1,6 +1,7 @@
 import pandas as pd
 from scipy.integrate import cumtrapz
 import numpy as np
+from types import SimpleNamespace
 
 from .decorators import time_series
 from .adjustments import get_neutral_bias_at_border, assume_no_upward_motion
@@ -129,3 +130,61 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     #                       baro=baro, acc_axis=acc_axis)
 
     return constrained
+
+
+class DepthTimeseries:
+    """
+    Class for managing depth time series data
+    """
+    def __init__(self, series, start_idx, stop_idx, origin=None, assume_no_upward_motion=False):
+        # Hang on to the raw data
+        self.raw = series if series.index.name == 'time' else series.set_index('time')
+
+        # Keep track of the start stop
+        self.start_idx = start_idx
+        self.stop_idx = stop_idx
+
+        # Establish a zero depth index
+        self.origin = origin
+        if self.origin is None:
+            self.origin = start_idx
+
+        # Whether the final data should assume no upward motion
+        self.assume_no_upward_motion = assume_no_upward_motion
+
+        # Holder for depth data with at least the origin zeroed out
+        self._depth = None
+
+        self._avg_velocity = None
+        self._distance_traveled = None
+        self._has_upward_motion = None
+        self._velocity = None
+        self._velocity_range = None
+
+    @property
+    def depth(self):
+        if self._depth is None:
+            self._depth = self.raw - self.raw.iloc[self.origin]
+        return self._depth
+
+    @property
+    def velocity(self):
+        if self._velocity is None:
+            dt = self.depth.index[1] - self.depth.index[0]
+            self._velocity = pd.Series(np.gradient(self.depth.values.T[0], dt), self.depth.index, name='velocity')
+        return self._velocity
+
+    @property
+    def velocity_range(self):
+        """min, max of the absulute probe velocity during motion"""
+        if self._velocity_range is None:
+            minimum = np.min(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
+            maximum = np.max(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
+            self._velocity_range = SimpleNamespace(min=minimum, max=maximum)
+        return self._velocity_range
+
+    @property
+    def distance_traveled(self):
+        if self._distance_traveled is None:
+            self._distance_traveled = abs(self.depth.max() - self.depth.min()).values
+        return self._distance_traveled

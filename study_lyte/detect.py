@@ -178,7 +178,6 @@ def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.01, threshold=-0
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
     """
-    # Perform a removal of ambient but using the end of the data.
     n = get_points_from_fraction(len(active), 0.05)
     border_fract = 0.3
     norm_active = get_normalized_at_border(active, fractional_basis=border_fract, direction='backward')

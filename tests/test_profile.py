@@ -104,3 +104,15 @@ class TestLyteProfile:
     def test_repr(self, profile):
         profile_str = f"LyteProfile (Recorded {len(profile.raw):,} points, {profile.datetime.isoformat()})"
         assert str(profile) == profile_str
+
+
+def test_old_profile(data_dir):
+    """
+    Test profile is able to compute surface and stop from older
+    no acceleration data
+    """
+    f = 'old_probe.csv'
+    p = join(data_dir, f)
+    profile = LyteProfileV6(p)
+    assert profile.stop.index == 29685
+    assert profile.surface.nir.index == 7970
