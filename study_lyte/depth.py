@@ -87,6 +87,7 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     n_points = len(baro_depth)
     top_search = baro_depth.iloc[:mid]
     default_top = np.where(top_search == top_search.max())[0][0]
+
     top = nearest_peak(baro_depth.values, start, default_index=default_top, height=-10, distance=100)
     # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
@@ -123,6 +124,7 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     constrained = result.set_index('time')
     #assume_no_upward_motion(result[baro])
     constrained = constrained - constrained.iloc[0]
+
     # from .plotting import plot_constrained_baro
     # pos = get_depth_from_acceleration(df).mul(100)
     # pos = pos.reset_index()
@@ -138,7 +140,11 @@ class DepthTimeseries:
     """
     def __init__(self, series, start_idx, stop_idx, origin=None, assume_no_upward_motion=False):
         # Hang on to the raw data
-        self.raw = series if series.index.name == 'time' else series.set_index('time')
+        self.raw = series
+        if series.index.name != 'time':
+            c = [c for c in series.columns if c != 'time'][0]
+            self.raw = self.raw.set_index('time')
+            self.raw = self.raw[c]
 
         # Keep track of the start stop
         self.start_idx = start_idx
@@ -171,7 +177,7 @@ class DepthTimeseries:
     def velocity(self):
         if self._velocity is None:
             dt = self.depth.index[1] - self.depth.index[0]
-            self._velocity = pd.Series(np.gradient(self.depth.values.T[0], dt), self.depth.index, name='velocity')
+            self._velocity = pd.Series(np.gradient(self.depth, dt), self.depth.index, name='velocity')
         return self._velocity
 
     @property
@@ -184,7 +190,19 @@ class DepthTimeseries:
         return self._velocity_range
 
     @property
+    def avg_velocity(self):
+        if self._avg_velocity is None:
+            self._avg_velocity = abs(self.velocity.iloc[self.start_idx:self.stop_idx].mean())
+        return self._avg_velocity
+
+    @property
     def distance_traveled(self):
         if self._distance_traveled is None:
-            self._distance_traveled = abs(self.depth.max() - self.depth.min()).values
+            self._distance_traveled = abs(self.depth.max() - self.depth.min())
         return self._distance_traveled
+    
+    @property
+    def has_upward_motion(self):
+        if self._has_upward_motion is None:
+            self._has_upward_motion = np.any(self.raw.diff() > 0)
+        return self._has_upward_motion
