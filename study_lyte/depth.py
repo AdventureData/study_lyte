@@ -4,8 +4,7 @@ import numpy as np
 from types import SimpleNamespace
 
 from .decorators import time_series
-from .adjustments import get_neutral_bias_at_border, assume_no_upward_motion
-from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley, nearest_peak
+from .detect import nearest_peak
 
 
 @time_series

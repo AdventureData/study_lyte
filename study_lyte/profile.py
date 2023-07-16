@@ -166,7 +166,8 @@ class LyteProfileV6:
                 self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
                 self._force = self._force.iloc[self.surface.force.index:self.stop.index].reset_index()
                 self._force = self._force.drop(columns='index')
-                self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
+                if not self._force.empty:
+                    self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
 
             return self._force
 
@@ -229,14 +230,16 @@ class LyteProfileV6:
             """
             if self._surface is None:
                 # Call to populate nir in raw
-                idx = get_nir_surface(self.raw['nir'])
+                idx = get_nir_surface(self.raw['nir'].iloc[self.start.index:self.stop.index])
+                idx += self.start.index
                 depth = self.depth.iloc[idx]
                 # Event according the NIR sensors
                 nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
 
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
-                f_idx = np.abs(self.depth - force_surface_depth).argmin()
+                f_idx = np.abs(self.depth.iloc[self.start.index:self.stop.index] - force_surface_depth).argmin()
+                f_idx += self.start.index
                 force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
                 self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
             return self._surface
@@ -346,7 +349,7 @@ class LyteProfileV6:
             profile_string += msg.format('Resolution', f'{self.resolution:0.1f} pts/cm')
             profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
             profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
-
+            profile_string += msg.format('Error Detected:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
             profile_string += '-' * (len(header)-2) + '\n'
             return profile_string
 
