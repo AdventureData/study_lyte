@@ -137,7 +137,7 @@ class DepthTimeseries:
     """
     Class for managing depth time series data
     """
-    def __init__(self, series, start_idx, stop_idx, origin=None, assume_no_upward_motion=False):
+    def __init__(self, series, start_idx=None, stop_idx=None, origin=None, assume_no_upward_motion=False):
         # Hang on to the raw data
         self.raw = series
         if series.index.name != 'time':
@@ -165,6 +165,7 @@ class DepthTimeseries:
         self._has_upward_motion = None
         self._velocity = None
         self._velocity_range = None
+        self._max_velocity = None
 
     @property
     def depth(self):
@@ -184,8 +185,8 @@ class DepthTimeseries:
         """min, max of the absulute probe velocity during motion"""
         if self._velocity_range is None:
             minimum = np.min(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
-            maximum = np.max(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
-            self._velocity_range = SimpleNamespace(min=minimum, max=maximum)
+            maximum = self.max_velocity
+            self._velocity_range = SimpleNamespace(min=minimum, max=self.max_velocity)
         return self._velocity_range
 
     @property
@@ -195,8 +196,15 @@ class DepthTimeseries:
         return self._avg_velocity
 
     @property
+    def max_velocity(self):
+        if self._max_velocity is None:
+            self._max_velocity = self.velocity.iloc[self.start_idx:self.stop_idx].min()
+        return self._max_velocity
+
+    @property
     def distance_traveled(self):
         if self._distance_traveled is None:
+            data = self.depth.iloc[self.start_idx:self.stop_idx]
             self._distance_traveled = abs(self.depth.max() - self.depth.min())
         return self._distance_traveled
     

@@ -87,7 +87,7 @@ def merge_time_series(df_list):
         if i == 0:
             result = df.copy()
         else:
-            result = pd.merge_ordered(result, df, on='time')
+            result = pd.merge_ordered(result, df, on='time', fill_method='cubic')
 
     # interpolate the nan's
     result = result.interpolate(method='index')

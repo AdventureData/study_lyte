@@ -181,6 +181,7 @@ class LyteProfileV6:
                     df = pd.DataFrame.from_dict({'time':self.raw['time'],
                                                  self.motion_detect_name:self.acceleration})
                     depth = get_depth_from_acceleration(df).reset_index()
+                    # depth[self.motion_detect_name].iloc[self.stop.index:] = depth[self.motion_detect_name].iloc[self.stop.index]
                     self.raw['accelerometer_depth'] = depth[self.motion_detect_name]
                     self.raw['depth'] = self.fuse_depths(self.raw['accelerometer_depth'], self.raw['filtereddepth'], error=self.error.index)
 
@@ -360,7 +361,7 @@ class LyteProfileV6:
 
             # Accelerometer is always solid in the beginning unknown as we move on in time
             weights_acc = np.ones_like(acc_depth) * 100
-            weights_baro = np.ones_like(acc_depth)
+            weights_baro = np.ones_like(baro_depth)
             avg = np.average(np.array([acc_depth, baro_depth]).T, axis=1,
                              weights=np.array([weights_acc, weights_baro]).T)
 
@@ -378,6 +379,14 @@ class LyteProfileV6:
                 avg = np.average(np.array([acc_depth, baro_depth]).T, axis=1,
                                  weights=np.array([weights_acc, weights_baro]).T)
 
+            # The deeper we go the more the baro constrains
+            baro_bottom = baro_depth.min()
+            avg_bottom = avg.min()
+            scale = abs(avg_bottom / 100)
+            # Scale total
+            delta = (avg_bottom * (5 - scale) + baro_bottom * scale) / 5
+
+            avg = (avg / avg_bottom) * delta
             return avg
 
         @classmethod
