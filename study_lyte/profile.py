@@ -6,9 +6,9 @@ from types import SimpleNamespace
 import numpy as np
 
 from . io import read_csv
-from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction
+from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
-from .depth import get_depth_from_acceleration
+from .depth import get_depth_from_acceleration, get_constrained_baro_depth
 
 @dataclass
 class Event:
@@ -43,6 +43,7 @@ class LyteProfileV6:
             self._meta = None
 
             self._acceleration = None # No gravity acceleration
+            self._barometer = None
             self._cropped = None  # Full dataframe cropped to surface and stop
             self._force = None
             self._nir = None
@@ -56,6 +57,7 @@ class LyteProfileV6:
             self._avg_velocity = None # avg velocity of the probe while in the snow
             self._resolution = None # Vertical resolution of the profile in the snow
             self._datetime = None
+            self._has_upward_motion = None # Flag for datasets containing upward motion
 
             # Events
             self._start = None
@@ -77,7 +79,7 @@ class LyteProfileV6:
         @classmethod
         def from_dataframe(cls, df):
             profile = LyteProfileV6(None)
-            profile._raw = self.process_df(df)
+            profile._raw = cls.process_df(df)
             return profile
 
         @property
@@ -107,8 +109,13 @@ class LyteProfileV6:
                     self._meta['ACC. Range'] = float(self._meta['ACCRANGE'])
                 else:
                     self._meta['ACC. Range'] = 2
+
             else:
                 self._meta['ACC. Range'] = float(self._meta['ACC. Range'])
+
+            if 'ZPFO' in self._meta.keys():
+                self._meta['ZPFO'] = int(self._meta['ZPFO'])
+
             return self._meta
 
 
@@ -170,6 +177,19 @@ class LyteProfileV6:
                     self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
 
             return self._force
+        @property
+        def barometer(self):
+            if self._barometer is None:
+                baro = self.raw['filtereddepth']
+                if 'ZPFO' in self.metadata.keys():
+                    if self.metadata['ZPFO'] < 50:
+                        baro = zfilter(self.raw['filtereddepth'], 0.1)
+                df = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
+                self._barometer = df.set_index('time')['baro']
+                # self._barometer = get_constrained_baro_depth(df.set_index('time')['baro'], self.start.index, self.stop.index)
+
+            return self._barometer
+
 
         @property
         def depth(self):
@@ -183,7 +203,8 @@ class LyteProfileV6:
                     depth = get_depth_from_acceleration(df).reset_index()
                     # depth[self.motion_detect_name].iloc[self.stop.index:] = depth[self.motion_detect_name].iloc[self.stop.index]
                     self.raw['accelerometer_depth'] = depth[self.motion_detect_name]
-                    self.raw['depth'] = self.fuse_depths(self.raw['accelerometer_depth'], self.raw['filtereddepth'], error=self.error.index)
+                    self.raw['depth'] = self.fuse_depths(self.raw['accelerometer_depth'], self.barometer.values,
+                                                         error=self.error.index)
 
                 else:
                     self.raw['depth'] = self.raw['filtereddepth']
@@ -231,18 +252,21 @@ class LyteProfileV6:
             """
             if self._surface is None:
                 # Call to populate nir in raw
-                idx = get_nir_surface(self.raw['nir'].iloc[self.start.index:self.stop.index])
-                idx += self.start.index
+                idx = get_nir_surface(self.raw['nir'])
                 depth = self.depth.iloc[idx]
                 # Event according the NIR sensors
                 nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
 
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
-                f_idx = np.abs(self.depth.iloc[self.start.index:self.stop.index] - force_surface_depth).argmin()
-                f_idx += self.start.index
+                f_idx = np.abs(self.depth - force_surface_depth).argmin()
                 force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
                 self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
+                # Allow surface detection to modify the start if we have conflict.
+                if nir.time < self.start.time:
+                    self._start = nir
+                    self._start.name = 'start'
+
             return self._surface
 
         @property
@@ -380,14 +404,31 @@ class LyteProfileV6:
                                  weights=np.array([weights_acc, weights_baro]).T)
 
             # The deeper we go the more the baro constrains
-            baro_bottom = baro_depth.min()
-            avg_bottom = avg.min()
-            scale = abs(avg_bottom / 100)
-            # Scale total
-            delta = (avg_bottom * (5 - scale) + baro_bottom * scale) / 5
-
-            avg = (avg / avg_bottom) * delta
+            # baro_bottom = baro_depth.min()
+            # avg_bottom = avg.min()
+            # scale = abs(avg_bottom / 100)
+            # # Scale total
+            # delta = (avg_bottom * (5 - scale) + baro_bottom * scale) / 5
+            #
+            # avg = (avg / avg_bottom) * delta
             return avg
+
+
+        @property
+        def has_upward_motion(self):
+            if self._has_upward_motion is None:
+                self._has_upward_motion = False
+                # crop the depth data and downsample for speedy check
+                data = self.depth.iloc[self.start.index:self.stop.index]
+                coarse = data.groupby(data.index // 200).first()
+                # loop and find any values greater than the current value
+                for i,v in coarse.items():
+                    upward = np.any(coarse.iloc[i:] > v + 5)
+                    if upward:
+                        self._has_upward_motion = True
+                        break
+
+            return self._has_upward_motion
 
         @classmethod
         def get_error(cls, acc, acc_range, threshold=0.7):
