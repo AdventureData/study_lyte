@@ -43,6 +43,7 @@ class SensorStyle(Enum):
     ACC_Y_AXIS = 'Y-Axis', 'Y-Axis', 'darkgreen'
     ACC_Z_AXIS = 'Z-Axis', 'Z-Axis', 'darkorange'
     ACCELERATION = 'acceleration', 'Acc. Magn.', 'darkgreen'
+    FUSED = 'fused', 'Fused', 'magenta'
     BAROMETER = 'barometer', 'Baro.', 'navy'
     UNKNOWN = 'UNKNOWN', 'UNKNOWN', None
 

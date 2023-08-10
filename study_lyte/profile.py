@@ -8,7 +8,7 @@ import numpy as np
 from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
-from .depth import get_depth_from_acceleration, get_constrained_baro_depth
+from .depth import AccelerometerDepth, BarometerDepth
 
 @dataclass
 class Event:
@@ -41,9 +41,11 @@ class LyteProfileV6:
             # Properties
             self._raw = None
             self._meta = None
-
-            self._acceleration = None # No gravity acceleration
+            self._accelerometer = None
             self._barometer = None
+
+            self._depth = None # Final depth series used for analysis
+            self._acceleration = None # No gravity acceleration
             self._cropped = None  # Full dataframe cropped to surface and stop
             self._force = None
             self._nir = None
@@ -81,6 +83,11 @@ class LyteProfileV6:
             profile = LyteProfileV6(None)
             profile._raw = cls.process_df(df)
             return profile
+
+        def assign_event_depths(self):
+            self.events
+            for event in [self._start, self._stop, self._surface.nir, self._surface.force]:
+                event.depth = self.depth.iloc[event.index]
 
         @property
         def raw(self):
@@ -177,39 +184,46 @@ class LyteProfileV6:
                     self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
 
             return self._force
+
+        @property
+        def accelerometer(self):
+            """Returns a class holding timeseries of accelerometer based depth"""
+            if self._accelerometer is None:
+                data = pd.DataFrame.from_dict({'time':self.raw['time'], self.acceleration.name:self.acceleration.values})
+                data = data.set_index('time')[self.acceleration.name]
+                self._accelerometer = AccelerometerDepth(data, self.start.index, self.stop.index)
+            return self._accelerometer
+
         @property
         def barometer(self):
+            """Returns a class holding timeseries of barometer based depth"""
+
             if self._barometer is None:
-                baro = self.raw['filtereddepth']
+                baro = self.raw[['time', 'filtereddepth']].set_index('time')
                 if 'ZPFO' in self.metadata.keys():
                     if self.metadata['ZPFO'] < 50:
+                        # TODO: make this more intelligent
                         baro = zfilter(self.raw['filtereddepth'], 0.1)
-                df = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
-                self._barometer = df.set_index('time')['baro']
-                # self._barometer = get_constrained_baro_depth(df.set_index('time')['baro'], self.start.index, self.stop.index)
+                        baro = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
+                        baro = baro.set_index('time')
+                self._barometer = BarometerDepth(baro['filtereddepth'], self.start.index, self.stop.index)
 
             return self._barometer
 
-
         @property
         def depth(self):
-            if 'depth' not in self.raw.columns:
-                if self.depth_column is not None:
-                    self.raw['depth'] = self.raw[self.depth_column]
-
-                elif self.motion_detect_name != Sensor.UNAVAILABLE:
-                    df = pd.DataFrame.from_dict({'time':self.raw['time'],
-                                                 self.motion_detect_name:self.acceleration})
-                    depth = get_depth_from_acceleration(df).reset_index()
-                    # depth[self.motion_detect_name].iloc[self.stop.index:] = depth[self.motion_detect_name].iloc[self.stop.index]
-                    self.raw['accelerometer_depth'] = depth[self.motion_detect_name]
-                    self.raw['depth'] = self.fuse_depths(self.raw['accelerometer_depth'], self.barometer.values,
-                                                         error=self.error.index)
+            if self._depth is None:
+                if self.motion_detect_name != Sensor.UNAVAILABLE:
+                    depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
+                                                   self.barometer.depth.values.copy(),
+                                                   error=self.error.index)
+                    self._depth = pd.Series(data=depth, index=self.raw['time'])
 
                 else:
-                    self.raw['depth'] = self.raw['filtereddepth']
+                    self._depth = self.raw['filtereddepth']
+                self.assign_event_depths()
 
-            return self.raw['depth']
+            return self._depth
 
         @property
         def time(self):
@@ -222,13 +236,10 @@ class LyteProfileV6:
             if self._start is None:
                 if self.motion_detect_name != Sensor.UNAVAILABLE:
                     idx = get_acceleration_start(self.acceleration)
-                    depth = self.depth.iloc[idx]
                 else:
                     idx=0
-                    depth=0
 
-                self._start = Event(name='start', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
-
+                self._start = Event(name='start', index=idx, depth=None, time=self.raw['time'].iloc[idx])
             return self._start
 
         @property
@@ -238,11 +249,9 @@ class LyteProfileV6:
                 if self.motion_detect_name != Sensor.UNAVAILABLE:
                     backward_accel = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='backward')
                     idx = get_acceleration_stop(backward_accel)
-                    depth = self.depth.iloc[idx]
                 else:
                     idx = get_nir_stop(self.raw['Sensor3'])
-                    depth = self.depth.iloc[idx]
-                self._stop = Event(name='stop', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
+                self._stop = Event(name='stop', index=idx, depth=None, time=self.raw['time'].iloc[idx])
             return self._stop
 
         @property
@@ -292,6 +301,8 @@ class LyteProfileV6:
         @property
         def distance_traveled(self):
             if self._distance_traveled is None:
+                # Call depth to ensure its populated
+                self.depth
                 self._distance_traveled = abs(self.start.depth - self.stop.depth)
             return self._distance_traveled
 

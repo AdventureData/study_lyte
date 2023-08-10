@@ -5,8 +5,7 @@ from types import SimpleNamespace
 
 from .decorators import time_series
 from .detect import nearest_peak
-from .adjustments import zfilter
-
+from .adjustments import zfilter, merge_time_series
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
@@ -21,7 +20,9 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     Return:
         position_df: pandas Dataframe containing the same input axes plus magnitude of the result position
     """
-    # Auto gather the x,y,z acceleration columns if they're there.
+    if type(acceleration_df) != pd.DataFrame:
+        acceleration_df = pd.DataFrame(acceleration_df)
+        # Auto gather the x,y,z acceleration columns if they're there.
     acceleration_columns = [c for c in acceleration_df.columns if 'Axis' in c or 'acceleration' == c]
 
     # Convert from g's to m/s2
@@ -142,10 +143,6 @@ class DepthTimeseries:
         # Hang on to the raw data
         self.raw = series
 
-        if series.index.name != 'time':
-            c = [c for c in series.columns if c != 'time'][0]
-            self.raw = self.raw.set_index('time')
-            self.raw = self.raw[c]
 
         # Keep track of the start stop
         self.start_idx = start_idx
@@ -238,6 +235,7 @@ class BarometerDepth(DepthTimeseries):
     def depth(self):
         if self._depth is None:
             self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
+            self._depth = self._depth.reindex(self.raw.index, method='nearest')
         return self._depth
 
 class AccelerometerDepth(DepthTimeseries):
@@ -245,7 +243,7 @@ class AccelerometerDepth(DepthTimeseries):
     def depth(self):
         if self._depth is None:
             valid = ~np.isnan(self.raw)
-            self._depth = get_depth_from_acceleration(self.raw[valid])[self.raw.columns[0]]
+            self._depth = get_depth_from_acceleration(self.raw[valid])[self.raw.name]
             self._depth.iloc[self.stop_idx:] = self._depth.iloc[self.stop_idx]
 
         return self._depth

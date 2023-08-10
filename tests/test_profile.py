@@ -105,6 +105,23 @@ class TestLyteProfile:
         profile_str = f"LyteProfile (Recorded {len(profile.raw):,} points, {profile.datetime.isoformat()})"
         assert str(profile) == profile_str
 
+    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    def test_barometer(self, profile):
+        assert pytest.approx(profile.barometer.distance_traveled, 1e-2) == 116.00
+
+    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    def test_accelerometer(self, profile):
+        assert pytest.approx(profile.accelerometer.distance_traveled, 1e-2) == 124.54
+
+    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    def test_depth_profiles_are_independent(self, profile):
+        """Issue in merged depth shows up if the data is not a copy"""
+        # Invoke the fusing of depths where leaking data would occur
+        profile.depth
+        delta = profile.accelerometer.depth.iloc[profile.error.index] - profile.barometer.depth.iloc[profile.error.index]
+        # Profiles are different enough that it should be more than a 0.5cm
+        assert delta > 0.5
+
 
 def test_old_profile(data_dir):
     """
