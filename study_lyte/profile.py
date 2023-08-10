@@ -99,8 +99,6 @@ class LyteProfileV6:
                 self._raw = self.process_df(self.raw)
 
             return self._raw
-
-
         @property
         def metadata(self):
             """
@@ -199,14 +197,14 @@ class LyteProfileV6:
             """Returns a class holding timeseries of barometer based depth"""
 
             if self._barometer is None:
-                baro = self.raw[['time', 'filtereddepth']].set_index('time')
+                baro = self.raw[['time', 'filtereddepth']].set_index('time')['filtereddepth']
                 if 'ZPFO' in self.metadata.keys():
                     if self.metadata['ZPFO'] < 50:
                         # TODO: make this more intelligent
                         baro = zfilter(self.raw['filtereddepth'], 0.1)
                         baro = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
-                        baro = baro.set_index('time')
-                self._barometer = BarometerDepth(baro['filtereddepth'], self.start.index, self.stop.index)
+                        baro = baro.set_index('time')['baro']
+                self._barometer = BarometerDepth(baro, self.start.index, self.stop.index)
 
             return self._barometer
 
@@ -415,13 +413,15 @@ class LyteProfileV6:
                                  weights=np.array([weights_acc, weights_baro]).T)
 
             # The deeper we go the more the baro constrains
-            # baro_bottom = baro_depth.min()
-            # avg_bottom = avg.min()
-            # scale = abs(avg_bottom / 100)
-            # # Scale total
-            # delta = (avg_bottom * (5 - scale) + baro_bottom * scale) / 5
-            #
-            # avg = (avg / avg_bottom) * delta
+            baro_bottom = baro_depth.min()
+            acc_bottom = acc_depth.min()
+            scale = abs(acc_depth / 100)
+            avg_bottom = avg.min()
+
+            # Scale total
+            delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
+
+            avg = (avg / avg_bottom) * delta
             return avg
 
 

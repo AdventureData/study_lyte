@@ -44,7 +44,8 @@ class SensorStyle(Enum):
     ACC_Z_AXIS = 'Z-Axis', 'Z-Axis', 'darkorange'
     ACCELERATION = 'acceleration', 'Acc. Magn.', 'darkgreen'
     FUSED = 'fused', 'Fused', 'magenta'
-    BAROMETER = 'barometer', 'Baro.', 'navy'
+    CONSTRAINED_BAROMETER = 'barometer', 'Constr. Baro.', 'navy'
+    RAW_BARO = 'filtereddepth', 'Raw Baro.', 'Brown'
     UNKNOWN = 'UNKNOWN', 'UNKNOWN', None
 
     @property
