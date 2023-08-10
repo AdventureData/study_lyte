@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 from .decorators import time_series
 from .detect import nearest_peak
+from .adjustments import zfilter
 
 
 @time_series
@@ -137,9 +138,10 @@ class DepthTimeseries:
     """
     Class for managing depth time series data
     """
-    def __init__(self, series, start_idx=None, stop_idx=None, origin=None, assume_no_upward_motion=False):
+    def __init__(self, series, start_idx=None, stop_idx=None, origin=None):
         # Hang on to the raw data
         self.raw = series
+
         if series.index.name != 'time':
             c = [c for c in series.columns if c != 'time'][0]
             self.raw = self.raw.set_index('time')
@@ -154,12 +156,11 @@ class DepthTimeseries:
         if self.origin is None:
             self.origin = start_idx
 
-        # Whether the final data should assume no upward motion
-        self.assume_no_upward_motion = assume_no_upward_motion
 
         # Holder for depth data with at least the origin zeroed out
         self._depth = None
 
+        # Useful attributes
         self._avg_velocity = None
         self._distance_traveled = None
         self._has_upward_motion = None
@@ -177,7 +178,10 @@ class DepthTimeseries:
     def velocity(self):
         if self._velocity is None:
             dt = self.depth.index[1] - self.depth.index[0]
-            self._velocity = pd.Series(np.gradient(self.depth, dt), self.depth.index, name='velocity')
+            velocity = np.gradient(self.depth, dt)
+            # Due to rounding issues the index is not evenly space, so filter the velocity
+            velocity = zfilter(velocity, 0.01)
+            self._velocity = pd.Series(velocity, self.depth.index, name='velocity')
         return self._velocity
 
     @property
@@ -185,7 +189,6 @@ class DepthTimeseries:
         """min, max of the absulute probe velocity during motion"""
         if self._velocity_range is None:
             minimum = np.min(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
-            maximum = self.max_velocity
             self._velocity_range = SimpleNamespace(min=minimum, max=self.max_velocity)
         return self._velocity_range
 
@@ -197,19 +200,52 @@ class DepthTimeseries:
 
     @property
     def max_velocity(self):
+        """Max velocity between start and stop"""
         if self._max_velocity is None:
-            self._max_velocity = self.velocity.iloc[self.start_idx:self.stop_idx].min()
+            self._max_velocity = abs(self.velocity.iloc[self.start_idx:self.stop_idx].min())
         return self._max_velocity
 
     @property
     def distance_traveled(self):
+        """Total distance traveled"""
         if self._distance_traveled is None:
-            data = self.depth.iloc[self.start_idx:self.stop_idx]
             self._distance_traveled = abs(self.depth.max() - self.depth.min())
         return self._distance_traveled
     
     @property
     def has_upward_motion(self):
+        """Contains upward motion in between the start and stop"""
         if self._has_upward_motion is None:
-            self._has_upward_motion = np.any(self.raw.diff() > 0)
+            self._has_upward_motion = False
+            # crop the depth data and downsample for speedy check
+            data = self.raw.iloc[self.start_idx:self.stop_idx]
+            if len(data) > 1000:
+                coarse = data.groupby(data.index // 200).first()
+            else:
+                coarse = data
+            # loop and find any values greater than the current value
+            for i, v in enumerate(coarse):
+                upward = np.any(coarse.iloc[i:] > v + 5)
+                if upward:
+                    self._has_upward_motion = True
+                    break
+
         return self._has_upward_motion
+
+
+class BarometerDepth(DepthTimeseries):
+    @property
+    def depth(self):
+        if self._depth is None:
+            self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
+        return self._depth
+
+class AccelerometerDepth(DepthTimeseries):
+    @property
+    def depth(self):
+        if self._depth is None:
+            valid = ~np.isnan(self.raw)
+            self._depth = get_depth_from_acceleration(self.raw[valid])[self.raw.columns[0]]
+            self._depth.iloc[self.stop_idx:] = self._depth.iloc[self.stop_idx]
+
+        return self._depth

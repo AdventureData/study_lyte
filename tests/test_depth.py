@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from os.path import join
 import pytest
@@ -5,8 +6,8 @@ import pytest
 from study_lyte.io import read_csv
 from study_lyte.detect import get_acceleration_start, get_acceleration_stop
 from study_lyte.depth import get_depth_from_acceleration, get_fitted_depth, \
-    get_constrained_baro_depth, DepthTimeseries
-from study_lyte.adjustments import assume_no_upward_motion, get_neutral_bias_at_border
+    get_constrained_baro_depth, DepthTimeseries, AccelerometerDepth, BarometerDepth
+from study_lyte.adjustments import get_neutral_bias_at_border
 
 @pytest.fixture(scope='session')
 def accel(data_dir):
@@ -112,15 +113,65 @@ def test_get_constrained_baro_real(raw_df, fname, column, acc_axis, method, expe
     assert pytest.approx(delta_d, abs=3) == expected_depth
 
 
-@pytest.mark.parametrize('fname, column, acc_axis, total_depth, min_velocity, max_velocity', [
-    ('hard_surface_hard_stop.csv', 'depth', 'Y-Axis', 93.945, 8.918, 164.090),
-])
-def test_depth_timeseries(raw_df, fname, column, acc_axis, total_depth, min_velocity, max_velocity):
-    neutral = get_neutral_bias_at_border(raw_df[acc_axis])
-    start = get_acceleration_start(neutral)
-    neutral = get_neutral_bias_at_border(raw_df[acc_axis], direction='backward')
-    stop = get_acceleration_stop(neutral)
-    depth = DepthTimeseries(raw_df[['time', column]].set_index('time'), start, stop)
-    assert pytest.approx(depth.distance_traveled, abs=1e-2) == total_depth
-    assert pytest.approx(depth.velocity_range.min, abs=1e-2) == min_velocity
-    print('')
+class TestDepthTimeSeries:
+    """Quick tests for all base depth timeseries class"""
+    @pytest.fixture(scope='class')
+    def depth(self):
+        """Test basic data"""
+        depth_data = [0, -1, -10, -20, -30, -40, -50, -60, -70, -64, -81, -82]
+        time_data = np.linspace(0, 1.2, len(depth_data))
+
+        df = pd.DataFrame.from_dict({'data':depth_data, 'time':time_data}).set_index('time')
+        depth = DepthTimeseries(df['data'], 1, 10)
+        return depth
+
+    @pytest.mark.parametrize('attribute, expected, tol', [
+        #("distance_traveled", 82, 1e-2),
+        ("has_upward_motion", True, None),
+        ("max_velocity", 91.67, 1e-2),
+        ("avg_velocity", 73.33, 1e-2),
+    ])
+    def test_attribute_properties(self, depth, attribute, expected, tol):
+        result = getattr(depth, attribute)
+        if tol is None:
+            assert result == expected
+        else:
+            assert pytest.approx(result, abs=tol) == expected
+
+    def test_zero_start_depth(self, depth):
+        """All depths should start at zero for the beginning"""
+        assert depth.depth.iloc[depth.start_idx] == 0
+
+class TestAccelerationDepthTimeseries:
+    """Quick test to make sure the processing of depth is being done"""
+    @pytest.fixture()
+    def depth(self, data_dir):
+        df, meta = read_csv(join(data_dir, 'hard_surface_hard_stop.csv'))
+        neutral = get_neutral_bias_at_border(df['Y-Axis'])
+        start = get_acceleration_start(neutral)
+        neutral_back = get_neutral_bias_at_border(df['Y-Axis'], direction='backward')
+        stop = get_acceleration_stop(neutral_back)
+        data = pd.DataFrame.from_dict({'Y-Axis': neutral, 'time': df['time']}).set_index('time')
+        depth = AccelerometerDepth(data, start, stop)
+        return depth
+
+    def test_total_distance_travelled(self, depth):
+        assert pytest.approx(depth.distance_traveled, abs=1e-2) == 68.07
+
+    def test_max_velocity(self, depth):
+        assert pytest.approx(depth.max_velocity, abs=1e-2) == 245.18
+
+
+class TestBarometerDepthTimeseries:
+    """Quick test to make sure the processing of Baro depth is being done"""
+    @pytest.fixture()
+    def depth(self, data_dir):
+        df, meta = read_csv(join(data_dir, 'hard_surface_hard_stop.csv'))
+        depth = BarometerDepth(df[['depth', 'time']], 5630, 14260)
+        return depth
+
+    def test_total_distance_travelled(self, depth):
+        assert pytest.approx(depth.distance_traveled, abs=1e-2) == 89.68
+
+    def test_max_velocity(self, depth):
+        assert pytest.approx(depth.max_velocity, abs=1e-2) == 295.629
