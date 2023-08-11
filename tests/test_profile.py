@@ -2,74 +2,76 @@ import pytest
 from os.path import join
 from study_lyte.profile import LyteProfileV6, Sensor
 
-
 class TestLyteProfile:
 
     @pytest.fixture()
-    def profile(self, data_dir, filename):
-        return LyteProfileV6(join(data_dir, filename), calibration={'Sensor1': [1, 0]})
+    def profile(self, data_dir, filename, depth_method):
+        return LyteProfileV6(join(data_dir, filename), calibration={'Sensor1': [1, 0]}, depth_method=depth_method)
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 9539)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        ('kaslo.csv', 'fused', 9539)
     ])
     def test_start_property(self, profile, filename, expected):
         start = profile.start.index
         assert  pytest.approx(start, abs= len(profile.raw)*0.005) == expected
 
-
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 27278)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        ('kaslo.csv', 'fused', 27278)
     ])
-    def test_stop_property(self, profile, filename, expected):
+    def test_stop_property(self, profile, filename, depth_method, expected):
         stop = profile.stop.index
         assert pytest.approx(stop, abs= len(profile.raw)*0.005) == expected
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 12479)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        ('kaslo.csv', 'fused', 12479)
     ])
-    def test_nir_surface_property(self, profile, filename, expected):
+    def test_nir_surface_property(self, profile, filename, depth_method, expected):
         nir_surface = profile.surface.nir.index
         assert  pytest.approx(nir_surface, abs=len(profile.raw)*0.005) == expected
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 123.5)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        ('kaslo.csv', 'fused', 119.2)
     ])
     def test_distance_through_snow(self, profile, expected):
         delta = profile.distance_through_snow
         assert pytest.approx(delta, abs=1) == expected
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 123)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Test our default method
+        ('kaslo.csv', 'fused', 119.87),
+        # Test our extra methods
+        ('kaslo.csv', 'accelerometer', 123.88),
+        ('kaslo.csv', 'barometer', 116.00)
     ])
     def test_distance_traveled(self, profile, expected):
         delta = profile.distance_traveled
         assert pytest.approx(delta, abs=1) == expected
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 112)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        ('kaslo.csv', 'fused', 108.6)
     ])
     def test_avg_velocity(self, profile, expected):
         delta = profile.avg_velocity
         assert pytest.approx(delta, abs=0.5) == expected
 
-    @pytest.mark.parametrize('filename, expected', [
-        ('kaslo.csv', 1.1)
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        ('kaslo.csv', 'fused', 1.1)
     ])
     def test_moving_time(self, profile, expected):
         delta = profile.moving_time
         assert pytest.approx(delta, abs=0.01) == expected
 
-    @pytest.mark.parametrize('filename, expected_points, mean_force', [
-        ('kaslo.csv', 16377, 3521)
+    @pytest.mark.parametrize('filename, depth_method, expected_points, mean_force', [
+        ('kaslo.csv', 'fused', 16377, 3474)
     ])
-    def test_force_profile(self, profile, filename, expected_points, mean_force):
+    def test_force_profile(self, profile, filename, depth_method, expected_points, mean_force):
         assert pytest.approx(len(profile.force), len(profile.raw)*0.005) == expected_points
         assert pytest.approx(profile.force['force'].mean(), abs=10) == mean_force
 
-    @pytest.mark.parametrize('filename, expected_points, mean_force', [
-        ('kaslo.csv', 14799, 2863)
+    @pytest.mark.parametrize('filename, depth_method, expected_points, mean_force', [
+        ('kaslo.csv', 'fused', 14799, 2863)
     ])
-    def test_nir_profile(self, profile, filename, expected_points, mean_force):
+    def test_nir_profile(self, profile, filename, depth_method, expected_points, mean_force):
         assert pytest.approx(len(profile.nir), len(profile.raw)*0.005) == expected_points
         assert pytest.approx(profile.nir['nir'].mean(), abs=3) == mean_force
 
@@ -100,20 +102,28 @@ class TestLyteProfile:
         result = LyteProfileV6.get_acceleration_columns(columns)
         assert result == expected
 
-    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    @pytest.mark.parametrize('filename, depth_method', [
+        ('kaslo.csv', 'fused')
+    ])
     def test_repr(self, profile):
         profile_str = f"LyteProfile (Recorded {len(profile.raw):,} points, {profile.datetime.isoformat()})"
         assert str(profile) == profile_str
 
-    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    @pytest.mark.parametrize('filename, depth_method', [
+        ('kaslo.csv', 'fused')
+    ])
     def test_barometer(self, profile):
         assert pytest.approx(profile.barometer.distance_traveled, 1e-2) == 116.00
 
-    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    @pytest.mark.parametrize('filename, depth_method', [
+        ('kaslo.csv', 'fused')
+    ])
     def test_accelerometer(self, profile):
         assert pytest.approx(profile.accelerometer.distance_traveled, 1e-2) == 124.54
 
-    @pytest.mark.parametrize('filename', ['kaslo.csv'])
+    @pytest.mark.parametrize('filename, depth_method', [
+        ('kaslo.csv', 'fused')
+    ])
     def test_depth_profiles_are_independent(self, profile):
         """Issue in merged depth shows up if the data is not a copy"""
         # Invoke the fusing of depths where leaking data would occur
@@ -121,6 +131,19 @@ class TestLyteProfile:
         delta = profile.accelerometer.depth.iloc[profile.error.index] - profile.barometer.depth.iloc[profile.error.index]
         # Profiles are different enough that it should be more than a 0.5cm
         assert delta > 0.5
+
+    @pytest.mark.parametrize('filename, depth_method', [
+        ('kaslo.csv', 'barometer'),
+        ('kaslo.csv', 'accelerometer'),
+        ('kaslo.csv', 'fused')
+    ])
+    def test_recursion_exceedance_on_depth(self, profile, filename, depth_method):
+        """This confirms we don't have a sneaky recursion error around selecting depth methods"""
+        # Invoking force while picking depth method once caused issues.
+        try:
+            profile.force
+        except Exception:
+            pytest.fail("Unable to invoke profile.force, likely an recursion issue...")
 
 
 def test_old_profile(data_dir):

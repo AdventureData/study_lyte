@@ -3,11 +3,11 @@ from enum import Enum
 
 
 class EventStyle(Enum):
-    START = 'g', '--'
-    STOP = 'r', '--'
-    SURFACE = 'lightsteelblue', '--'
-
-    UNKNOWN = 'k', '--'
+    START = 'g', '--', 1
+    STOP = 'r', '--',  1
+    SURFACE = 'lightsteelblue', '--', 1
+    ERROR = 'orangered', 'dotted',   1
+    UNKNOWN = 'k', '--', 1
 
     @classmethod
     def from_name(cls, name):
@@ -24,7 +24,11 @@ class EventStyle(Enum):
 
     @property
     def linestyle(self):
-        return self.value[-1]
+        return self.value[1]
+
+    @property
+    def linewidth(self):
+        return self.value[2]
 
     @property
     def label(self):
@@ -93,8 +97,10 @@ def plot_events(ax, profile_events, plot_type='normal', event_alpha=0.6):
         raise ValueError(f'Unrecognized plot type {plot_type}, options are vertical or normal!')
 
     for event in profile_events:
-        style = EventStyle.from_name(event.name)
-        line_fn(event.time, linestyle=style.linestyle, color=style.color, label=style.label, alpha=event_alpha)
+        if event.time is not None:
+            style = EventStyle.from_name(event.name)
+            line_fn(event.time, linestyle=style.linestyle, color=style.color,
+                    label=style.label, alpha=event_alpha,  linewidth=style.linewidth)
 
 
 def plot_ts(data, data_label=None, time_data=None, events=None, thresholds=None, features=None, show=True, ax=None, alpha=1.0, color=None):

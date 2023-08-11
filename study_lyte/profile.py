@@ -24,19 +24,19 @@ class Sensor(Enum):
 
 
 class LyteProfileV6:
-        def __init__(self, filename, surface_detection_offset=4.5, calibration=None, depth_column=None):
+        def __init__(self, filename, surface_detection_offset=4.5, calibration=None, depth_method='fused'):
             """
             Args:
                 filename: path to valid lyte probe csv.
                 surface_detection_offset: Geometric offset between nir sensors and tip in cm.
                 calibration: Dictionary of keys and polynomial coefficients to calibration sensors
-                depth_column: Column to use for depth. If none, defaults to acceleration.
+                depth_method: Method/sensor to use for depth, Options are barometer, accelerometer, fused
 
             """
             self.filename = Path(filename)
             self.surface_detection_offset = surface_detection_offset
             self.calibration = calibration or {}
-            self.depth_column = depth_column
+            self.depth_method = depth_method
 
             # Properties
             self._raw = None
@@ -66,7 +66,6 @@ class LyteProfileV6:
             self._stop = None
             self._surface = None
             self._error = None
-
 
         @staticmethod
         def process_df(df):
@@ -195,7 +194,6 @@ class LyteProfileV6:
         @property
         def barometer(self):
             """Returns a class holding timeseries of barometer based depth"""
-
             if self._barometer is None:
                 baro = self.raw[['time', 'filtereddepth']].set_index('time')['filtereddepth']
                 if 'ZPFO' in self.metadata.keys():
@@ -211,14 +209,18 @@ class LyteProfileV6:
         @property
         def depth(self):
             if self._depth is None:
-                if self.motion_detect_name != Sensor.UNAVAILABLE:
-                    depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
-                                                   self.barometer.depth.values.copy(),
-                                                   error=self.error.index)
-                    self._depth = pd.Series(data=depth, index=self.raw['time'])
-
+                if self.motion_detect_name != Sensor.UNAVAILABLE and self.depth_method is not 'barometer':
+                    # User requested fused
+                    if self.depth_method == 'fused':
+                        depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
+                                                       self.barometer.depth.values.copy(),
+                                                       error=self.error.index)
+                        self._depth = pd.Series(data=depth, index=self.raw['time'])
+                    # User requested accelerometer
+                    elif self.depth_method == 'accelerometer':
+                        self._depth = self.accelerometer.depth
                 else:
-                    self._depth = self.raw['filtereddepth']
+                    self._depth =  self.barometer.depth
                 self.assign_event_depths()
 
             return self._depth
@@ -260,15 +262,17 @@ class LyteProfileV6:
             if self._surface is None:
                 # Call to populate nir in raw
                 idx = get_nir_surface(self.raw['nir'])
-                depth = self.depth.iloc[idx]
+
                 # Event according the NIR sensors
+                depth = self.depth.iloc[idx]
                 nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
 
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
                 f_idx = np.abs(self.depth - force_surface_depth).argmin()
-                force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
+                force = Event(name='surface', index=idx, depth=force_surface_depth, time=self.raw['time'].iloc[idx])
                 self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
+
                 # Allow surface detection to modify the start if we have conflict.
                 if nir.time < self.start.time:
                     self._start = nir
@@ -281,7 +285,7 @@ class LyteProfileV6:
             """ Return error event """
             if self._error is None:
                 if self.motion_detect_name != Sensor.UNAVAILABLE:
-                    idx = self.get_error(self.acceleration, self.metadata['ACC. Range'])
+                    idx = self.get_error(self.raw[self.motion_detect_name], self.metadata['ACC. Range'])
                     depth = None
                     if idx is None:
                         t = None
@@ -341,7 +345,7 @@ class LyteProfileV6:
             """
             Return all the common events recorded
             """
-            return [self.start, self.stop, self.surface.nir, self.surface.force]
+            return [self.start, self.stop, self.surface.nir, self.surface.force, self.error]
 
         @staticmethod
         def get_motion_name(columns):
@@ -397,23 +401,28 @@ class LyteProfileV6:
             weights_baro = np.ones_like(baro_depth)
             avg = np.average(np.array([acc_depth, baro_depth]).T, axis=1,
                              weights=np.array([weights_acc, weights_baro]).T)
+            scaled_baro = baro_depth
 
             if error is not None:
-                distance = get_points_from_fraction(len(acc_depth) / 2, 0.05)
-                minimum = 0.01
+                # Scale the baro according to known good data
+                delta_acc = avg[:error].max() - avg[:error].min()
+                delta_baro = scaled_baro[:error].max() - scaled_baro[:error].min()
+                ratio = delta_acc / delta_baro
+                scaled_baro = ratio * scaled_baro
 
-                # Transition period
-                baro_depth[error:] = baro_depth[error:] - (baro_depth[error] - avg[error])
+                minimum = 0.01
+                # Ensure the same starting place
+                scaled_baro[error:] = scaled_baro[error:] - (scaled_baro[error] - avg[error])
 
                 # weights_baro[error-distance:error] = np.linspace(weights_acc[error-distance], minimum, distance)
                 # Full reliance on the constrained baro
                 weights_acc[error:] = minimum
 
-                avg = np.average(np.array([acc_depth, baro_depth]).T, axis=1,
+                avg = np.average(np.array([acc_depth, scaled_baro]).T, axis=1,
                                  weights=np.array([weights_acc, weights_baro]).T)
 
             # The deeper we go the more the baro constrains
-            baro_bottom = baro_depth.min()
+            baro_bottom = scaled_baro.min()
             acc_bottom = acc_depth.min()
             scale = abs(acc_depth / 100)
             avg_bottom = avg.min()
@@ -442,7 +451,7 @@ class LyteProfileV6:
             return self._has_upward_motion
 
         @classmethod
-        def get_error(cls, acc, acc_range, threshold=0.7):
+        def get_error(cls, acc, acc_range, threshold=0.8):
             """Find a likely ACC error"""
             idx = acc.abs() >= (threshold * acc_range)
             error = None

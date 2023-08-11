@@ -152,7 +152,7 @@ class TestAccelerationDepthTimeseries:
         neutral_back = get_neutral_bias_at_border(df['Y-Axis'], direction='backward')
         stop = get_acceleration_stop(neutral_back)
         data = pd.DataFrame.from_dict({'Y-Axis': neutral, 'time': df['time']}).set_index('time')
-        depth = AccelerometerDepth(data, start, stop)
+        depth = AccelerometerDepth(data['Y-Axis'], start, stop)
         return depth
 
     def test_total_distance_travelled(self, depth):
@@ -167,11 +167,12 @@ class TestBarometerDepthTimeseries:
     @pytest.fixture()
     def depth(self, data_dir):
         df, meta = read_csv(join(data_dir, 'hard_surface_hard_stop.csv'))
-        depth = BarometerDepth(df[['depth', 'time']], 5630, 14260)
+        data = df[['depth', 'time']].set_index('time')['depth']
+        depth = BarometerDepth(data, 5630, 14260)
         return depth
 
     def test_total_distance_travelled(self, depth):
         assert pytest.approx(depth.distance_traveled, abs=1e-2) == 89.68
 
     def test_max_velocity(self, depth):
-        assert pytest.approx(depth.max_velocity, abs=1e-2) == 295.629
+        assert pytest.approx(depth.max_velocity, abs=1e-2) == 283.74
