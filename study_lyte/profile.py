@@ -186,9 +186,12 @@ class LyteProfileV6:
         def accelerometer(self):
             """Returns a class holding timeseries of accelerometer based depth"""
             if self._accelerometer is None:
-                data = pd.DataFrame.from_dict({'time':self.raw['time'], self.acceleration.name:self.acceleration.values})
-                data = data.set_index('time')[self.acceleration.name]
-                self._accelerometer = AccelerometerDepth(data, self.start.index, self.stop.index)
+                if self.motion_detect_name == Sensor.UNAVAILABLE:
+                    self._accelerometer = Sensor.UNAVAILABLE
+                else:
+                    data = pd.DataFrame.from_dict({'time':self.raw['time'], self.acceleration.name:self.acceleration.values})
+                    data = data.set_index('time')[self.acceleration.name]
+                    self._accelerometer = AccelerometerDepth(data, self.start.index, self.stop.index)
             return self._accelerometer
 
         @property
@@ -202,14 +205,21 @@ class LyteProfileV6:
                         baro = zfilter(self.raw['filtereddepth'], 0.1)
                         baro = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
                         baro = baro.set_index('time')['baro']
-                self._barometer = BarometerDepth(baro, self.start.index, self.stop.index)
+                if self.accelerometer != Sensor.UNAVAILABLE:
+                    idx = abs(self.accelerometer.depth - -1).argmin()
+                else:
+                    idx = self.start.index
+                self._barometer = BarometerDepth(baro, idx, self.stop.index)
+            # from .plotting import plot_ts
+            # ax = plot_ts(self.accelerometer.depth.values, events=[('start', idx)], show=False)
+            # plot_ts(self._barometer.depth.values, events=[('start', idx)], ax=ax)
 
             return self._barometer
 
         @property
         def depth(self):
             if self._depth is None:
-                if self.motion_detect_name != Sensor.UNAVAILABLE and self.depth_method is not 'barometer':
+                if self.motion_detect_name != Sensor.UNAVAILABLE and self.depth_method != 'barometer':
                     # User requested fused
                     if self.depth_method == 'fused':
                         depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
@@ -220,7 +230,7 @@ class LyteProfileV6:
                     elif self.depth_method == 'accelerometer':
                         self._depth = self.accelerometer.depth
                 else:
-                    self._depth =  self.barometer.depth
+                    self._depth = self.barometer.depth
                 self.assign_event_depths()
 
             return self._depth
@@ -269,8 +279,9 @@ class LyteProfileV6:
 
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
-                f_idx = np.abs(self.depth - force_surface_depth).argmin()
-                force = Event(name='surface', index=idx, depth=force_surface_depth, time=self.raw['time'].iloc[idx])
+                f_idx = abs(self.depth - force_surface_depth).argmin()
+
+                force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
                 self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
 
                 # Allow surface detection to modify the start if we have conflict.
@@ -388,6 +399,8 @@ class LyteProfileV6:
             profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
             profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
             profile_string += msg.format('Error Detected:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
+            profile_string += msg.format('Upward Motion?:', "True" if self.has_upward_motion else "False")
+
             profile_string += '-' * (len(header)-2) + '\n'
             return profile_string
 
@@ -396,7 +409,7 @@ class LyteProfileV6:
 
             """fuse together depths"""
 
-            # Accelerometer is always solid in the beginning unknown as we move on in time
+            # Accelerometer is always solid in the beginning, unknown as we move on in time
             weights_acc = np.ones_like(acc_depth) * 100
             weights_baro = np.ones_like(baro_depth)
             avg = np.average(np.array([acc_depth, baro_depth]).T, axis=1,
@@ -439,11 +452,11 @@ class LyteProfileV6:
             if self._has_upward_motion is None:
                 self._has_upward_motion = False
                 # crop the depth data and downsample for speedy check
-                data = self.depth.iloc[self.start.index:self.stop.index]
-                coarse = data.groupby(data.index // 200).first()
+                n = get_points_from_fraction(len(self.depth), 0.005)
+                coarse = self.depth.iloc[self.start.index:self.stop.index:n]
                 # loop and find any values greater than the current value
                 for i,v in coarse.items():
-                    upward = np.any(coarse.iloc[i:] > v + 5)
+                    upward = np.any(coarse.loc[i:] > v + 5)
                     if upward:
                         self._has_upward_motion = True
                         break
@@ -451,7 +464,7 @@ class LyteProfileV6:
             return self._has_upward_motion
 
         @classmethod
-        def get_error(cls, acc, acc_range, threshold=0.8):
+        def get_error(cls, acc, acc_range, threshold=0.9):
             """Find a likely ACC error"""
             idx = acc.abs() >= (threshold * acc_range)
             error = None

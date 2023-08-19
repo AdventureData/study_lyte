@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from .decorators import time_series
 from .detect import nearest_peak
-from .adjustments import zfilter, merge_time_series
+from .adjustments import zfilter
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
@@ -88,9 +88,7 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     n_points = len(baro_depth)
     top_search = baro_depth.iloc[:mid]
     default_top = np.where(top_search == top_search.max())[0][0]
-
     top = nearest_peak(baro_depth.values, start, default_index=default_top, height=-10, distance=100)
-    # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
     soft_stop = mid + int(0.1 * n_points)
@@ -142,7 +140,6 @@ class DepthTimeseries:
     def __init__(self, series, start_idx=None, stop_idx=None, origin=None):
         # Hang on to the raw data
         self.raw = series
-
 
         # Keep track of the start stop
         self.start_idx = start_idx
@@ -237,6 +234,7 @@ class BarometerDepth(DepthTimeseries):
             self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
             self._depth = self._depth.reindex(self.raw.index, method='nearest')
         return self._depth
+
 
 class AccelerometerDepth(DepthTimeseries):
     @property

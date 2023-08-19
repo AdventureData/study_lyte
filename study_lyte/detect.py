@@ -154,7 +154,7 @@ def get_acceleration_stop(acceleration, threshold=0.1, max_threshold=0.3):
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=0.05, max_threshold=0.1):
+def get_nir_surface(clean_active, threshold=-0.1, max_threshold=0.1):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 
@@ -166,19 +166,28 @@ def get_nir_surface(clean_active, threshold=0.05, max_threshold=0.1):
     Return:
         surface: Integer index of the estimated snow surface
     """
-    clean_norm = clean_active / clean_active.max()
-    clean_norm = clean_norm - abs(clean_norm).min()
-    surface = get_signal_event(clean_norm, search_direction='forward', threshold=threshold,
-                               max_threshold=max_threshold)
+    n = get_points_from_fraction(len(clean_active), 0.005)
+    clean_norm = clean_active / clean_active[0:n].mean()
+    neutral = get_neutral_bias_at_border(clean_norm)
+    neutral = neutral/neutral.max()
+
+    surface = get_signal_event(neutral, search_direction='forward', threshold=threshold,
+                               max_threshold=max_threshold, n_points=n)
+    # from .plotting import plot_ts, plt
+    # ax = plot_ts(neutral, events=[('surface', surface)], show=False)
+    # ax.axhline(threshold)
+    # ax.axhline(max_threshold)
+    # print(n)
+    # plt.show()
     return surface
 
 
-def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.01, threshold=-0.01):
+def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.005, threshold=-0.005):
     """
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
     """
-    n = get_points_from_fraction(len(active), 0.05)
+    n = get_points_from_fraction(len(active), 0.1)
     border_fract = 0.3
     norm_active = get_normalized_at_border(active, fractional_basis=border_fract, direction='backward')
     norm_active = norm_active.rolling(window=n, center=True, closed='both', min_periods=1).mean()
