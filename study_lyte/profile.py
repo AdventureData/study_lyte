@@ -24,19 +24,21 @@ class Sensor(Enum):
 
 
 class LyteProfileV6:
-        def __init__(self, filename, surface_detection_offset=4.5, calibration=None, depth_method='fused'):
+        def __init__(self, filename, surface_detection_offset=4.5, calibration=None, depth_method='fused', tip_diameter_mm=5):
             """
             Args:
                 filename: path to valid lyte probe csv.
                 surface_detection_offset: Geometric offset between nir sensors and tip in cm.
                 calibration: Dictionary of keys and polynomial coefficients to calibration sensors
                 depth_method: Method/sensor to use for depth, Options are barometer, accelerometer, fused
+                tip_diameter_mm: diameter of the force tip in mm
 
             """
             self.filename = Path(filename)
             self.surface_detection_offset = surface_detection_offset
             self.calibration = calibration or {}
             self.depth_method = depth_method
+            self.tip_diameter_mm = tip_diameter_mm
 
             # Properties
             self._raw = None
@@ -181,6 +183,15 @@ class LyteProfileV6:
                     self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
 
             return self._force
+
+        @property
+        def pressure(self):
+            if 'pressure' not in self.force.columns:
+                # Add pressure in kpa
+                area = np.pi * (self.tip_diameter_mm / 1000)**2/4
+                # Convert mN to kPa
+                self.force['pressure'] = ((self.force['force']/1000) / area) / 1000
+            return self.force[['depth', 'pressure']]
 
         @property
         def accelerometer(self):
