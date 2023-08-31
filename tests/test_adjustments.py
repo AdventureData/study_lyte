@@ -70,6 +70,10 @@ def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_
 @pytest.mark.parametrize('data_list, expected', [
     # Typical use, low sample to high res
     ([np.linspace(1, 4, 4), np.linspace(1, 4, 2)], 2 * [np.linspace(1, 4, 4)]),
+    # Test misalignment in time
+    # ([np.linspace(0, 1.102, 17632),
+    #   np.linspace(0, 0.5, 8000)], 2 * [np.linspace(1, 4, 4)]),
+
     # No data
     ([], []),
 ])

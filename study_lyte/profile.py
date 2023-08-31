@@ -9,7 +9,11 @@ from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
 from .depth import AccelerometerDepth, BarometerDepth
+from .logging import setup_log
+import logging
+setup_log()
 
+LOG = logging.getLogger('study_lyte.profile')
 @dataclass
 class Event:
     name: str
@@ -86,6 +90,9 @@ class LyteProfileV6:
             return profile
 
         def assign_event_depths(self):
+            """
+            Enable depth assignment post depth realization
+            """
             self.events
             for event in [self._start, self._stop, self._surface.nir, self._surface.force]:
                 event.depth = self.depth.iloc[event.index]
@@ -100,6 +107,7 @@ class LyteProfileV6:
                 self._raw = self.process_df(self.raw)
 
             return self._raw
+
         @property
         def metadata(self):
             """
@@ -173,6 +181,7 @@ class LyteProfileV6:
             if self._force is None:
                 if 'Sensor1' in self.calibration.keys():
                     force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0)
+                    # force = force - force[0]
                 else:
                     force = self.raw['Sensor1'].values
 
@@ -212,10 +221,12 @@ class LyteProfileV6:
                 baro = self.raw[['time', 'filtereddepth']].set_index('time')['filtereddepth']
                 if 'ZPFO' in self.metadata.keys():
                     if self.metadata['ZPFO'] < 50:
+                        LOG.info('Filtering barometer data...')
                         # TODO: make this more intelligent
                         baro = zfilter(self.raw['filtereddepth'], 0.1)
                         baro = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
                         baro = baro.set_index('time')['baro']
+
                 if self.accelerometer != Sensor.UNAVAILABLE:
                     idx = abs(self.accelerometer.depth - -1).argmin()
                 else:
@@ -236,7 +247,11 @@ class LyteProfileV6:
                         depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
                                                        self.barometer.depth.values.copy(),
                                                        error=self.error.index)
-                        self._depth = pd.Series(data=depth, index=self.raw['time'])
+                        if depth.min() < -230:
+                            LOG.warning('Fused depth result produced a profile > 250 cm. Defaulting to accelerometer')
+                            self._depth = self.accelerometer.depth
+                        else:
+                            self._depth = pd.Series(data=depth, index=self.raw['time'])
                     # User requested accelerometer
                     elif self.depth_method == 'accelerometer':
                         self._depth = self.accelerometer.depth
@@ -475,7 +490,7 @@ class LyteProfileV6:
             return self._has_upward_motion
 
         @classmethod
-        def get_error(cls, acc, acc_range, threshold=0.9):
+        def get_error(cls, acc, acc_range, threshold=0.95):
             """Find a likely ACC error"""
             idx = acc.abs() >= (threshold * acc_range)
             error = None

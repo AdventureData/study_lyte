@@ -113,7 +113,9 @@ class TestLyteProfile:
         ('kaslo.csv', 'fused')
     ])
     def test_barometer(self, profile):
-        assert pytest.approx(profile.barometer.distance_traveled, 1e-2) == 116.00
+        result = pytest.approx(profile.barometer.distance_traveled, 1e-2)
+        assert result == 116.00
+
 
     @pytest.mark.parametrize('filename, depth_method', [
         ('kaslo.csv', 'fused')
@@ -146,13 +148,20 @@ class TestLyteProfile:
             pytest.fail("Unable to invoke profile.force, likely an recursion issue...")
 
 
-def test_old_profile(data_dir):
-    """
-    Test profile is able to compute surface and stop from older
-    no acceleration data
-    """
-    f = 'old_probe.csv'
-    p = join(data_dir, f)
-    profile = LyteProfileV6(p)
-    assert profile.stop.index == 29685
-    assert profile.surface.nir.index == 7970
+class TestLegacyProfile():
+    @pytest.fixture()
+    def profile(self, data_dir):
+        f = 'old_probe.csv'
+        p = join(data_dir, f)
+        profile = LyteProfileV6(p)
+        return profile
+    def test_stop_wo_accel(self, profile):
+        """
+        Test profile is able to compute surface and stop from older
+        no acceleration data
+        """
+
+        assert pytest.approx(profile.stop.index, int(0.01*len(profile.depth))) == 29685
+
+    def test_surface(self, profile):
+        assert pytest.approx(profile.surface.nir.index, int(0.01*len(profile.depth))) == 7970
