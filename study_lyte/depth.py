@@ -157,6 +157,9 @@ class DepthTimeseries:
         # Useful attributes
         self._avg_velocity = None
         self._distance_traveled = None
+        self._distance_traveled_during_motion = None
+        self._avg_distance_traveled = None
+
         self._has_upward_motion = None
         self._velocity = None
         self._velocity_range = None
@@ -205,7 +208,23 @@ class DepthTimeseries:
         if self._distance_traveled is None:
             self._distance_traveled = abs(self.depth.max() - self.depth.min())
         return self._distance_traveled
-    
+
+    @property
+    def avg_distance_traveled(self):
+        """Average distance traveled"""
+        if self._avg_distance_traveled is None:
+            self._avg_distance_traveled = abs(self.depth.iloc[0:self.start_idx].mean() -
+                                              self.depth.iloc[self.stop_idx:].mean())
+        return self._avg_distance_traveled
+
+
+    @property
+    def distance_traveled_during_motion(self):
+        """Total distance traveled between start and stop"""
+        if self._distance_traveled_during_motion is None:
+            self._distance_traveled_during_motion = abs(self.depth.iloc[self.start_idx] - self.depth.iloc[self.stop_idx])
+        return self._distance_traveled_during_motion
+
     @property
     def has_upward_motion(self):
         """Contains upward motion in between the start and stop"""
