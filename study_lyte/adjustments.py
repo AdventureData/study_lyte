@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+from scipy.signal import lfilter
 
 def get_points_from_fraction(n_samples, fraction):
     """
@@ -27,7 +27,7 @@ def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, directio
     return avg
 
 
-def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.01, direction='forward'):
+def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.005, direction='forward'):
     """
     Bias adjust the series data by using the XX % of the data either at the front of the data
     or the end of the .
@@ -65,6 +65,31 @@ def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, 
         border_norm = series
     return border_norm
 
+def merge_on_to_time(df_list, final_time):
+    """
+    Reindex the df fram the list onto a final time stamp
+    """
+    # Build dummy result in case no data is passed
+    result = pd.DataFrame()
+
+    # Merge everything else to it
+    for i, df in enumerate(df_list):
+        time_df = df.copy()
+        if df.index.name != 'time':
+            time_df = time_df.set_index('time')
+        else:
+            time_df = df.copy()
+
+        data = time_df.reindex(time_df.index.union(final_time)).interpolate(method='cubic').reindex(final_time)
+        if i == 0:
+            result = data
+        else:
+            result = pd.merge_ordered(result, data, on='time', fill_method='cubic')
+
+    # interpolate the nan's
+    result = result.interpolate(method='nearest', limit_direction='both')
+    return result
+
 
 def merge_time_series(df_list):
     """
@@ -87,7 +112,7 @@ def merge_time_series(df_list):
         if i == 0:
             result = df.copy()
         else:
-            result = pd.merge_ordered(result, df, on='time')
+            result = pd.merge_ordered(result, df, on='time', fill_method='cubic')
 
     # interpolate the nan's
     result = result.interpolate(method='index')
@@ -248,3 +273,18 @@ def convert_force_to_pressure(force, tip_diameter_m, geom_adj=1):
     pressure = force.div(area)
     # Adjust for shape and convert to kPa
     return pressure * geom_adj / 1000
+
+def zfilter(series, fraction):
+    """
+    Zero phase filter
+    """
+    window = get_points_from_fraction(len(series), fraction)
+    filter_coefficients = np.ones(window) / window
+
+    # Apply the filter forward
+    filtered_signal = lfilter(filter_coefficients, 1, series)
+
+    # Apply the filter backward
+    filtered_signal = lfilter(filter_coefficients, 1, filtered_signal[::-1])[::-1]
+
+    return filtered_signal

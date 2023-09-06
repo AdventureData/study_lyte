@@ -1,11 +1,11 @@
 import pandas as pd
 from scipy.integrate import cumtrapz
 import numpy as np
+from types import SimpleNamespace
 
 from .decorators import time_series
-from .adjustments import get_neutral_bias_at_border, assume_no_upward_motion
-from .detect import get_acceleration_stop, get_acceleration_start, first_peak, nearest_valley, nearest_peak
-
+from .detect import nearest_peak
+from .adjustments import zfilter
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
@@ -20,7 +20,9 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     Return:
         position_df: pandas Dataframe containing the same input axes plus magnitude of the result position
     """
-    # Auto gather the x,y,z acceleration columns if they're there.
+    if type(acceleration_df) != pd.DataFrame:
+        acceleration_df = pd.DataFrame(acceleration_df)
+        # Auto gather the x,y,z acceleration columns if they're there.
     acceleration_columns = [c for c in acceleration_df.columns if 'Axis' in c or 'acceleration' == c]
 
     # Convert from g's to m/s2
@@ -87,7 +89,6 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     top_search = baro_depth.iloc[:mid]
     default_top = np.where(top_search == top_search.max())[0][0]
     top = nearest_peak(baro_depth.values, start, default_index=default_top, height=-10, distance=100)
-    # top = nearest_peak(df[baro].values, start, default_index=max_out, height=-0.1, distance=100)
 
     # Find valleys after, select closest to midpoint
     soft_stop = mid + int(0.1 * n_points)
@@ -122,6 +123,7 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     constrained = result.set_index('time')
     #assume_no_upward_motion(result[baro])
     constrained = constrained - constrained.iloc[0]
+
     # from .plotting import plot_constrained_baro
     # pos = get_depth_from_acceleration(df).mul(100)
     # pos = pos.reset_index()
@@ -129,3 +131,136 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     #                       baro=baro, acc_axis=acc_axis)
 
     return constrained
+
+
+class DepthTimeseries:
+    """
+    Class for managing depth time series data
+    """
+    def __init__(self, series, start_idx=None, stop_idx=None, origin=None):
+        # Hang on to the raw data
+        self.raw = series
+
+        # Keep track of the start stop
+        self.start_idx = start_idx
+        self.stop_idx = stop_idx
+
+        # Establish a zero depth index
+        self.origin = origin
+        if self.origin is None:
+            self.origin = start_idx
+
+
+        # Holder for depth data with at least the origin zeroed out
+        self._depth = None
+
+        # Useful attributes
+        self._avg_velocity = None
+        self._distance_traveled = None
+        self._distance_traveled_during_motion = None
+        self._avg_distance_traveled = None
+
+        self._has_upward_motion = None
+        self._velocity = None
+        self._velocity_range = None
+        self._max_velocity = None
+
+    @property
+    def depth(self):
+        if self._depth is None:
+            self._depth = self.raw - self.raw.iloc[self.origin]
+        return self._depth
+
+    @property
+    def velocity(self):
+        if self._velocity is None:
+            dt = self.depth.index[1] - self.depth.index[0]
+            velocity = np.gradient(self.depth, dt)
+            # Due to rounding issues the index is not evenly space, so filter the velocity
+            velocity = zfilter(velocity, 0.01)
+            self._velocity = pd.Series(velocity, self.depth.index, name='velocity')
+        return self._velocity
+
+    @property
+    def velocity_range(self):
+        """min, max of the absulute probe velocity during motion"""
+        if self._velocity_range is None:
+            minimum = np.min(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
+            self._velocity_range = SimpleNamespace(min=minimum, max=self.max_velocity)
+        return self._velocity_range
+
+    @property
+    def avg_velocity(self):
+        if self._avg_velocity is None:
+            self._avg_velocity = abs(self.velocity.iloc[self.start_idx:self.stop_idx].mean())
+        return self._avg_velocity
+
+    @property
+    def max_velocity(self):
+        """Max velocity between start and stop"""
+        if self._max_velocity is None:
+            self._max_velocity = abs(self.velocity.iloc[self.start_idx:self.stop_idx].min())
+        return self._max_velocity
+
+    @property
+    def distance_traveled(self):
+        """Total distance traveled"""
+        if self._distance_traveled is None:
+            self._distance_traveled = abs(self.depth.max() - self.depth.min())
+        return self._distance_traveled
+
+    @property
+    def avg_distance_traveled(self):
+        """Average distance traveled"""
+        if self._avg_distance_traveled is None:
+            self._avg_distance_traveled = abs(self.depth.iloc[0:self.start_idx].mean() -
+                                              self.depth.iloc[self.stop_idx:].mean())
+        return self._avg_distance_traveled
+
+
+    @property
+    def distance_traveled_during_motion(self):
+        """Total distance traveled between start and stop"""
+        if self._distance_traveled_during_motion is None:
+            self._distance_traveled_during_motion = abs(self.depth.iloc[self.start_idx] - self.depth.iloc[self.stop_idx])
+        return self._distance_traveled_during_motion
+
+    @property
+    def has_upward_motion(self):
+        """Contains upward motion in between the start and stop"""
+        if self._has_upward_motion is None:
+            self._has_upward_motion = False
+            # crop the depth data and downsample for speedy check
+            data = self.raw.iloc[self.start_idx:self.stop_idx]
+            if len(data) > 1000:
+                coarse = data.groupby(data.index // 200).first()
+            else:
+                coarse = data
+            # loop and find any values greater than the current value
+            for i, v in enumerate(coarse):
+                upward = np.any(coarse.iloc[i:] > v + 5)
+                if upward:
+                    self._has_upward_motion = True
+                    break
+
+        return self._has_upward_motion
+
+
+class BarometerDepth(DepthTimeseries):
+    @property
+    def depth(self):
+        if self._depth is None:
+            self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
+            self._depth = self._depth.reindex(self.raw.index, method='nearest')
+        return self._depth
+
+
+class AccelerometerDepth(DepthTimeseries):
+    @property
+    def depth(self):
+        if self._depth is None:
+            valid = ~np.isnan(self.raw)
+            self._depth = get_depth_from_acceleration(self.raw[valid])[self.raw.name]
+            self._depth.iloc[self.stop_idx:] = self._depth.iloc[self.stop_idx]
+
+        return self._depth
