@@ -69,6 +69,16 @@ class TestLyteProfile:
         assert pytest.approx(len(profile.force), len(profile.raw)*0.05) == expected_points
         assert pytest.approx(profile.force['force'].mean(), abs=50) == mean_force
 
+    @pytest.mark.parametrize('filename, depth_method, expected_points, mean_pressure', [
+        ('kaslo.csv', 'fused', 16377, 179)
+    ])
+    def test_pressure_profile(self, profile, filename, depth_method, expected_points, mean_pressure):
+        from study_lyte.plotting import plot_ts
+        plot_ts(profile.pressure)
+        assert pytest.approx(len(profile.pressure), len(profile.raw)*0.05) == expected_points
+        assert pytest.approx(profile.pressure['pressure'].mean(), abs=10) == mean_pressure
+
+
     @pytest.mark.parametrize('filename, depth_method, expected_points, mean_nir', [
         ('kaslo.csv', 'fused', 14799, 2863)
     ])
