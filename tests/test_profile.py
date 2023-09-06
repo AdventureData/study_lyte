@@ -160,7 +160,6 @@ class TestLegacyProfile():
         Test profile is able to compute surface and stop from older
         no acceleration data
         """
-
         assert pytest.approx(profile.stop.index, int(0.01*len(profile.depth))) == 29685
 
     def test_surface(self, profile):

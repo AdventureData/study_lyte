@@ -432,9 +432,10 @@ class LyteProfileV6:
 
         @classmethod
         def fuse_depths(cls, acc_depth, baro_depth, error=None):
+            """
+            Function to intelligently fuse together depth timeseries
 
-            """fuse together depths"""
-
+            """
             # Accelerometer is always solid in the beginning, unknown as we move on in time
             weights_acc = np.ones_like(acc_depth) * 100
             weights_baro = np.ones_like(baro_depth)
@@ -443,14 +444,7 @@ class LyteProfileV6:
             scaled_baro = baro_depth.copy()
 
             if error is not None:
-                # TODO: This needs more assessment
-                # Scale the baro according to known good data
-                # ind = avg < 0
-                # delta_acc = avg[ind][:error].max() - avg[ind][:error].min()
-                # delta_baro = scaled_baro[:error].max() - scaled_baro[:error].min()
-                # ratio = delta_acc / delta_baro
-                # scaled_baro = ratio * scaled_baro
-
+                LOG.info("Blending depth timeseries...")
                 minimum = 0.01
                 # Ensure the same starting place
                 scaled_baro[error:] = scaled_baro[error:] - (scaled_baro[error] - avg[error])
@@ -475,6 +469,10 @@ class LyteProfileV6:
 
         @property
         def has_upward_motion(self):
+            """
+            Bool indicating if upward motion was detected
+
+            """
             if self._has_upward_motion is None:
                 self._has_upward_motion = False
                 # crop the depth data and downsample for speedy check

@@ -12,7 +12,6 @@ import numpy as np
     (5, 0.95, 4),
     (10, 0, 1),
     (10, 1, 9),
-
 ])
 def test_get_points_from_fraction(n_samples, fraction, expected):
     idx = get_points_from_fraction(n_samples, fraction)
@@ -70,10 +69,6 @@ def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_
 @pytest.mark.parametrize('data_list, expected', [
     # Typical use, low sample to high res
     ([np.linspace(1, 4, 4), np.linspace(1, 4, 2)], 2 * [np.linspace(1, 4, 4)]),
-    # Test misalignment in time
-    # ([np.linspace(0, 1.102, 17632),
-    #   np.linspace(0, 0.5, 8000)], 2 * [np.linspace(1, 4, 4)]),
-
     # No data
     ([], []),
 ])
@@ -135,8 +130,6 @@ def test_apply_calibration(data, coefficients, expected):
 
 
 @pytest.mark.parametrize("data, depth, new_depth, agg_method, expected_data", [
-    # Test w/ intuitive data
-    # ([2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6], [2, 4, 6], 'mean', [3, 7, 11]),
     # Test with negative depths
     ([[2, 4, 6, 8]], [-10, -20, -30, -40], [-20, -40], 'mean', [[3, 7]]),
     # Test with column specific agg methods
@@ -175,23 +168,18 @@ def test_assume_no_upward_motion(data, method, expected):
     s = pd.Series(np.array(data).astype(float), index=range(0, len(data)))
     exp_s = pd.Series(np.array(expected).astype(float), index=range(0, len(expected)))
     result = assume_no_upward_motion(s, method=method)
-    from study_lyte.plotting import plot_ts
-    ax = plot_ts(s, alpha=0.5, show=False)
-    ax = plot_ts(result,ax=ax, show=True)
-    #ax = plot_ts(exp_s, ax=ax, show=True)
-
     pd.testing.assert_series_equal(result, exp_s)
 
 
 @pytest.mark.skip('Function not ready')
 @pytest.mark.parametrize('fname, column, method, expected_depth', [
-    # ('hard_surface_hard_stop.csv', 'depth', 'nanmean', 83),
-    # ('baro_w_bench.csv', 'filtereddepth', 'nanmedian', 44),
-    # ('baro_w_tails.csv', 'filtereddepth', 'nanmean', 50),
-    # ('smooth.csv', 'filtereddepth', 'nanmedian', 63),
-    # ('low_zpfo_baro.csv', 'filtereddepth', 'nanmedian', 62),
-    # ('lower_slow_down.csv', 'filtereddepth', 'nanmedian', 57),
-    # ('rough_bench.csv', 'filtereddepth', 'nanmean', 52),
+    ('hard_surface_hard_stop.csv', 'depth', 'nanmean', 83),
+    ('baro_w_bench.csv', 'filtereddepth', 'nanmedian', 44),
+    ('baro_w_tails.csv', 'filtereddepth', 'nanmean', 50),
+    ('smooth.csv', 'filtereddepth', 'nanmedian', 63),
+    ('low_zpfo_baro.csv', 'filtereddepth', 'nanmedian', 62),
+    ('lower_slow_down.csv', 'filtereddepth', 'nanmedian', 57),
+    ('rough_bench.csv', 'filtereddepth', 'nanmean', 52),
 ])
 def test_assume_no_upward_motion_real(raw_df, fname, column, method, expected_depth):
     result = assume_no_upward_motion(raw_df[column], method=method)
