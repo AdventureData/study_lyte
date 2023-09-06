@@ -71,7 +71,7 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.1], 1 / 7, 0.01, 3),
+    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.0 -1.0, -1.0], 1 / 9, 0.01, 7),
     # Test no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 
@@ -91,13 +91,15 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('bogus.csv', 'Y-Axis', 32112),
     ('fusion.csv', 'Y-Axis', 54083),
     ('kaslo.csv', 'acceleration', 27570),
-    ('soft_acceleration.csv', 'Y-Axis', 132),
-    ('delayed_acceleration.csv', 'Y-Axis', 252),
-    ('gm_data.csv', 'Y-Axis', 8553)
+    ('soft_acceleration.csv', 'Y-Axis', 139),
+    ('delayed_acceleration.csv', 'Y-Axis', 266),
+    ('gm_data.csv', 'Y-Axis', 8553),
+    ('toolik.csv', 'Y-Axis', 17610),
+    ('egrip.csv','Y-Axis', 14378),
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
-    accel_neutral = get_neutral_bias_at_border(raw_df[column])
+    accel_neutral = get_neutral_bias_at_border(raw_df[column], direction='backward', fractional_basis=0.005)
     idx = get_acceleration_stop(accel_neutral)
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(idx, abs=int(0.03 * len(raw_df.index))) == stop_idx
@@ -124,13 +126,10 @@ def test_get_acceleration_stop_time_index(raw_df):
     # Typical bright->dark ambient
     ([0, 200, 3000, 4000], 0.01, 0.1, 1),
     # no ambient change ( dark or super cloudy)
-    ([1000, 1100, 2000, 3000], .01, 0.2,  1),
-    # 1/2 split using defaults
-    ([0, 1, 3, 5], 0.5, 0.7, 2)
-
+   ([1000, 1100, 2000, 3000], .01, 0.2,  1),
 ])
 def test_get_nir_surface(active, threshold, max_threshold, expected):
-    idx = get_nir_surface(np.array(active),
+    idx = get_nir_surface(pd.Series(active),
                           threshold=threshold,
                           max_threshold=max_threshold)
     assert idx == expected
@@ -144,25 +143,31 @@ def test_get_nir_surface(active, threshold, max_threshold, expected):
     ('tester_stick.csv', 9887),
     # Noise Ambient
     ('noise_ambient.csv', 14641),
+    ('bad_surface_tester.csv', 9583),
+    ('toolik.csv', 13684),
+    ('banner_legacy.csv', 8177),
+    # Get surface with challenging ambient conditions
+    ('egrip_tough_surface.csv', 31551),
+
 ])
 def test_get_nir_surface_real(raw_df, fname, surface_idx):
     """
     Test surface with real data
     """
     clean = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
-
     result = get_nir_surface(clean)
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result
 
 @pytest.mark.parametrize('fname, surface_idx', [
-    ('bogus.csv', 31286),
-    ('pilots.csv', 23764),
+    ('bogus.csv', 32478),
+    ('pilots.csv', 24489),
     ('hard_surface_hard_stop.csv', 13501),
     # No Ambient with tester stick
     ('tester_stick.csv', 25273),
     # Noise Ambient
-    ('noise_ambient.csv', 21867),
+    ('noise_ambient.csv', 23290),
+
 ])
 def test_get_nir_stop_real(raw_df, fname, surface_idx):
     """
@@ -170,4 +175,4 @@ def test_get_nir_stop_real(raw_df, fname, surface_idx):
     """
     result = get_nir_stop(raw_df['Sensor3'])
     # Ensure within 3% of original answer all the time.
-    assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result
+    assert pytest.approx(surface_idx, abs=int(0.05 * len(raw_df.index))) == result

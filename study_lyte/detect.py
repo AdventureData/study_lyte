@@ -129,7 +129,7 @@ def get_acceleration_start(acceleration, threshold=-0.01, max_threshold=0.02):
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, threshold=0.1, max_threshold=0.3):
+def get_acceleration_stop(acceleration, threshold=-0.05, max_threshold=0.05):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -141,20 +141,20 @@ def get_acceleration_stop(acceleration, threshold=0.1, max_threshold=0.3):
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
-    accel_neutral = -1 * acceleration[~np.isnan(acceleration)]
-    n_points = get_points_from_fraction(len(acceleration), 0.005)
-    max_ind = first_peak(accel_neutral[::-1], height=0.3, distance=10)
-    max_ind = len(acceleration) - max_ind - 1
+    n = get_points_from_fraction(len(acceleration), 0.005)
+    if n > 40:
+        n = 20
 
-    acceleration_stop = get_signal_event(accel_neutral[max_ind:], threshold=threshold,
+    max_ind = np.argwhere(acceleration == acceleration.min())[0][0]
+    acceleration_stop = get_signal_event(acceleration[max_ind:], threshold=threshold,
                                          max_threshold=max_threshold,
-                                         n_points=None,
+                                         n_points=n,
                                          search_direction='backward')
     acceleration_stop = acceleration_stop + max_ind
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=-0.4, max_threshold=0.25):
+def get_nir_surface(clean_active, threshold=-1, max_threshold=0.25):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 
@@ -170,29 +170,18 @@ def get_nir_surface(clean_active, threshold=-0.4, max_threshold=0.25):
     # Normalize by data unaffected by ambient
     clean_norm = clean_active / clean_active[n:].mean()
     neutral = get_neutral_bias_at_border(clean_norm)
-    # neutral = neutral/neutral.max()
 
     # Retrieve a likely candidate under challenging ambient conditions
+
     max_idx = np.argwhere((neutral == neutral.min()).values)[0][0]
 
     # Detect likely candidate normal ambient conditions
     surface = get_signal_event(neutral, search_direction='forward', threshold=threshold,
                                max_threshold=max_threshold, n_points=n)
-
-    # Pick the later occurring of the two
-    # if max_idx > surface:
-    #     surface = max_idx
-
-    # from .plotting import plot_ts, plt
-    # ax = plot_ts(neutral, events=[('surface', surface)], features=[max_idx], show=False)
-    # ax.axhline(threshold)
-    # ax.axhline(max_threshold)
-    # print(n)
-    # plt.show()
     return surface
 
 
-def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.005, threshold=-0.005):
+def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.008, threshold=-0.05):
     """
     Often the NIR signal shows the stopping point of the probe by repeated data.
     This looks at the active signal to estimate the stopping point
@@ -211,13 +200,6 @@ def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.005, threshold=-
     stop = get_signal_event(data, search_direction='backward', threshold=threshold,
                             max_threshold=max_threshold, n_points=n_points)
     stop += ind
-
-    # from .plotting import plot_ts, plt
-    # ax = plot_ts(norm_active, events=[('stop', stop), ('avg_tail', len(norm_active) - n)],
-    #              color='red', show=False)
-    # ax.axhline(threshold)
-    # ax.axhline(max_threshold)
-    # plt.show()
 
     return stop
 
