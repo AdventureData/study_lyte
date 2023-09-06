@@ -27,7 +27,7 @@ def get_directional_mean(arr: np.array, fractional_basis: float = 0.01, directio
     return avg
 
 
-def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.01, direction='forward'):
+def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.005, direction='forward'):
     """
     Bias adjust the series data by using the XX % of the data either at the front of the data
     or the end of the .

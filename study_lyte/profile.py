@@ -440,20 +440,21 @@ class LyteProfileV6:
             weights_baro = np.ones_like(baro_depth)
             avg = np.average(np.array([acc_depth, baro_depth]).T, axis=1,
                              weights=np.array([weights_acc, weights_baro]).T)
-            scaled_baro = baro_depth
+            scaled_baro = baro_depth.copy()
 
             if error is not None:
+                # TODO: This needs more assessment
                 # Scale the baro according to known good data
-                delta_acc = avg[:error].max() - avg[:error].min()
-                delta_baro = scaled_baro[:error].max() - scaled_baro[:error].min()
-                ratio = delta_acc / delta_baro
-                scaled_baro = ratio * scaled_baro
+                # ind = avg < 0
+                # delta_acc = avg[ind][:error].max() - avg[ind][:error].min()
+                # delta_baro = scaled_baro[:error].max() - scaled_baro[:error].min()
+                # ratio = delta_acc / delta_baro
+                # scaled_baro = ratio * scaled_baro
 
                 minimum = 0.01
                 # Ensure the same starting place
                 scaled_baro[error:] = scaled_baro[error:] - (scaled_baro[error] - avg[error])
 
-                # weights_baro[error-distance:error] = np.linspace(weights_acc[error-distance], minimum, distance)
                 # Full reliance on the constrained baro
                 weights_acc[error:] = minimum
 
@@ -461,14 +462,13 @@ class LyteProfileV6:
                                  weights=np.array([weights_acc, weights_baro]).T)
 
             # The deeper we go the more the baro constrains
-            baro_bottom = scaled_baro.min()
+            baro_bottom = baro_depth.min()
             acc_bottom = acc_depth.min()
-            scale = abs(acc_depth / 100)
+            scale = abs(acc_bottom / 100)
             avg_bottom = avg.min()
 
             # Scale total
             delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
-
             avg = (avg / avg_bottom) * delta
             return avg
 

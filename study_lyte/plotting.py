@@ -131,7 +131,7 @@ def plot_ts(data, data_label=None, time_data=None, events=None, thresholds=None,
             ax.axvline(v, color=s.color, linestyle=s.linestyle, label=name)
     if thresholds is not None:
         for name, tr in thresholds:
-            ax.axhline(tr, label=name, alpha=0.2, linestyle='--')
+            ax.axhline(tr, label=name, alpha=0.8, linestyle='--')
 
     if features is not None:
         ydata = [data[f] for f in features]
@@ -166,3 +166,19 @@ def plot_constrained_baro(orig, partial, full, acc_pos, top, bottom, start, stop
                  ax=ax, show=False, data_label='Part. Const.', alpha=0.3)
     ax = plot_ts(full, time_data=partial['time'], color='magenta', alpha=1,
                  ax=ax, show=True, data_label='Constr.')
+
+def plot_fused_depth(acc_depth, baro_depth, avg, scaled_baro=None, error=None):
+    """
+    Diagnostic plot to show the inner workings of the fusing technique
+    """
+    events = None
+    if error is not None:
+        events=[('error',error)]
+    ax = plot_ts(avg, events=events, show=False)
+    ax = plot_ts(acc_depth, ax=ax, data_label='Acc', show=False)
+    ax = plot_ts(baro_depth, ax=ax, data_label='Baro', show=False)
+    if scaled_baro is not None:
+        ax = plot_ts(scaled_baro, ax=ax, data_label='Scaled Baro', show=False)
+
+    ax.legend()
+    plt.show()
