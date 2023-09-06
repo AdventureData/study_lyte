@@ -13,6 +13,8 @@ Study Lyte
 .. image:: https://github.com/AdventureData/study_lyte/actions/workflows/build.yml/badge.svg
         :target: https://github.com/AdventureData/study_lyte/actions/workflows/build.yml
 
+.. image:: https://github.com/AdventureData/study_lyte/badges/coverage.svg
+        :target: https://github.com/AdventureData/study_lyte/actions/workflows/testing.yml
 
 Welcome to Adventure Data's python package for doing analysis with data from the Lyte Probe.
 The Lyte probe is a smart ski pole designed to measure snow. It measures NIR and Force simulataneously along with
