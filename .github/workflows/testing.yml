@@ -33,3 +33,11 @@ jobs:
       - name: Test with pytest
         run: |
           pytest -s ./tests/
+
+      - name: Run coverage
+        run: |
+          coverage run ...
+          coverage report -m
+
+      - name: Coverage Badge
+        uses: tj-actions/coverage-badge-py@v2
