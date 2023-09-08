@@ -155,6 +155,14 @@ class TestLyteProfile:
         except Exception:
             pytest.fail("Unable to invoke profile.force, likely an recursion issue...")
 
+    @pytest.mark.parametrize('filename, depth_method, total_depth', [
+        # Is filtered
+        ('egrip.csv', 'fused', 199),
+        # Not filtered
+        ('kaslo.csv','fused', 116),
+    ])
+    def test_barometer_is_filtered(self, profile, filename, depth_method, total_depth):
+        assert pytest.approx(profile.barometer.distance_traveled, abs=1) == total_depth
 
 class TestLegacyProfile():
     @pytest.fixture()
@@ -163,6 +171,7 @@ class TestLegacyProfile():
         p = join(data_dir, f)
         profile = LyteProfileV6(p)
         return profile
+
     def test_stop_wo_accel(self, profile):
         """
         Test profile is able to compute surface and stop from older

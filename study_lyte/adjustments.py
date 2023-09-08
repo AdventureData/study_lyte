@@ -67,7 +67,7 @@ def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, 
 
 def merge_on_to_time(df_list, final_time):
     """
-    Reindex the df fram the list onto a final time stamp
+    Reindex the df from the list onto a final time stamp
     """
     # Build dummy result in case no data is passed
     result = pd.DataFrame()
@@ -213,7 +213,6 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
 
 
 def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
-    from .plotting import plot_ts
 
     i = 1
     result = series.copy()
@@ -234,26 +233,12 @@ def assume_no_upward_motion(series, method='nanmean', max_wind_frac=0.15):
             # grab last index, assign values
             result.iloc[i-1:new_i] = new
             ind = result.iloc[:new_i] <= new
-            # Find only continuous areas where condition is true
-            #continuous = (ind).astype(int).diff().abs().cumsum() == 0
 
             result.iloc[:new_i][ind] = new
-            # ax = plot_ts(series, alpha=0.5, show=False, features=[i, new_i])
-            # ax = plot_ts(result, ax=ax)
-            # Watch out for mid values less than the new value
-            #new_val_idx = np.where(ind)[0][0] + (i-1)
-            #ind = result.iloc[:new_val_idx] < new
-            #result.iloc[:new_val_idx][ind] = new
-            #from .plotting import plot_ts
-
-            #plot_ts(result, features=[i, new_i])
-
             i = new_i
 
         else:
             i += 1
-    #from .plotting import plot_ts
-    #result = result.rolling(window=max_n, center=True, closed='both', min_periods=1).mean()
     return result
 
 def convert_force_to_pressure(force, tip_diameter_m, geom_adj=1):
@@ -282,9 +267,7 @@ def zfilter(series, fraction):
     filter_coefficients = np.ones(window) / window
 
     # Apply the filter forward
-    filtered_signal = lfilter(filter_coefficients, 1, series)
-
-    # Apply the filter backward
-    filtered_signal = lfilter(filter_coefficients, 1, filtered_signal[::-1])[::-1]
-
-    return filtered_signal
+    zi = np.zeros(filter_coefficients.shape[0]-1) #lfilter_zi(filter_coefficients, 1)
+    filtered, zf = lfilter(filter_coefficients, 1, series, zi=zi)
+    filtered = lfilter(filter_coefficients, 1, filtered[::-1], zi=zf)[0][::-1]
+    return filtered

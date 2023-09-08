@@ -223,7 +223,7 @@ class LyteProfileV6:
                     if self.metadata['ZPFO'] < 50:
                         LOG.info('Filtering barometer data...')
                         # TODO: make this more intelligent
-                        baro = zfilter(self.raw['filtereddepth'], 0.1)
+                        baro = zfilter(self.raw['filtereddepth'].values, 0.4)
                         baro = pd.DataFrame.from_dict({'baro':baro, 'time': self.raw['time']})
                         baro = baro.set_index('time')['baro']
 
