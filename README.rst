@@ -10,10 +10,7 @@ Study Lyte
         :target: https://study-lyte.readthedocs.io/en/latest/?version=latest
         :alt: Documentation Status
 
-.. image:: https://github.com/AdventureData/study_lyte/actions/workflows/build.yml/badge.svg
-        :target: https://github.com/AdventureData/study_lyte/actions/workflows/build.yml
-
-.. image:: https://github.com/adventuredata/study_lyte/wiki/coverage.svg
+.. image:: https://github.com/AdventureData/study_lyte/wiki/coverage.svg
         :target: https://github.com/AdventureData/study_lyte/actions/workflows/badge.yml
 
 Welcome to Adventure Data's python package for doing analysis with data from the Lyte Probe.
