@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-
+from study_lyte.styles import EventStyle
 def plot_events(ax, profile_events, plot_type='normal', event_alpha=0.6):
     """
     Plots the hline or vline for each event on a plot
