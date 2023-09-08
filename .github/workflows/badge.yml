@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  covergae:
+  coverage:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -27,11 +27,6 @@ jobs:
           python -m pip install pytest coverage genbadge[coverage]
           python setup.py install
 
-      - name: Run coverage
-        run: |
-          coverage run --source study_lyte -m pytest
-          coverage xml
-
       - name: Checkout gh-pages
         uses: actions/checkout@v3
         with:
@@ -40,6 +35,8 @@ jobs:
       - name: Create Badges
         shell: bash
         run: |
+          coverage run --source study_lyte -m pytest
+          coverage xml
           mkdir -p badges
           genbadge coverage -i coverage.xml -o badges/coverage.svg
 
