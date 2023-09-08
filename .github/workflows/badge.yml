@@ -11,15 +11,14 @@ on:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.10']
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+      - name: Checkout wiki
+        uses: actions/checkout@v3
         with:
-          python-version: ${{ matrix.python-version }}
+          repository: ${{github.repository}}.wiki
+          path: ./.github/wiki/
+          python-version: 3.10
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -27,30 +26,20 @@ jobs:
           python -m pip install pytest coverage genbadge[coverage]
           python setup.py install
 
-      - name: Checkout gh-pages
-        uses: actions/checkout@v3
-        with:
-          ref: gh-pages
-
       - name: Create Badges
         shell: bash
         run: |
           coverage run --source study_lyte -m pytest
           coverage xml
-          mkdir -p badges
-          genbadge coverage -i coverage.xml -o badges/coverage.svg
+          genbadge coverage -i coverage.xml -o .github/wiki/coverage.svg
 
-      - name: Deploy Badges
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: "Update badges [skip ci]"
-          skip_fetch: true
-          skip_checkout: true
-
-      # Without this, will get Error:
-      # Can't find 'action.yml', 'action.yaml' or 'Dockerfile' under '/home/runner/work/coverage-badge-action/coverage-badge-action/action.yml'.
-      # Did you forget to run actions/checkout before running your local action?
-      - name: Checkout Back
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
+      - name: Push to wiki
+        shell: bash
+        run: |
+          cd ./.github/wiki/
+          git add --all
+          git diff-index --quiet HEAD && exit
+          git config --local user.name  "GitHub Action"
+          git config --local user.email "action@github.com"
+          git commit --amend --no-edit   && git push --force-with-lease || \
+          git commit -m"Update coverage" && git push
