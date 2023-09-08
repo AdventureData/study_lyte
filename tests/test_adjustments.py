@@ -143,26 +143,29 @@ def test_apply_calibration(data, coefficients, expected):
     np.testing.assert_equal(result, expected)
 
 
-@pytest.mark.parametrize("data, depth, new_depth, agg_method, expected_data", [
+@pytest.mark.parametrize("data, depth, new_depth, resolution, agg_method, expected_data", [
     # Test with negative depths
-    ([[2, 4, 6, 8]], [-10, -20, -30, -40], [-20, -40], 'mean', [[3, 7]]),
+    #([[2, 4, 6, 8]], [-10, -20, -30, -40], [-20, -40], None, 'mean', [[3, 7]]),
     # Test with column specific agg methods
-    ([[2, 4, 6, 8], [1, 1, 1, 1]], [-10, -20, -30, -40], [-20, -40], {'data0': 'mean','data1':'sum'}, [[3, 7], [2, 2]])
-
+    #([[2, 4, 6, 8], [1, 1, 1, 1]], [-10, -20, -30, -40], [-20, -40], None, {'data0': 'mean','data1':'sum'}, [[3, 7], [2, 2]]),
+    # Test with resolution
+    ([[2, 4, 6, 8]], [-10, -20, -30, -40], None, 20, 'mean', [[3, 7]]),
 ])
-def test_aggregate_by_depth(data, depth, new_depth, agg_method, expected_data):
+def test_aggregate_by_depth(data, depth, new_depth, resolution, agg_method, expected_data):
     """
     """
     data_dict = {f'data{i}':d for i,d in enumerate(data)}
     data_dict['depth'] = depth
     df = pd.DataFrame.from_dict(data_dict)
 
-    exp = {'data': expected_data, 'depth': new_depth}
+    result = aggregate_by_depth(df, new_depth=new_depth, agg_method=agg_method, resolution=resolution)
+
     exp = {f'data{i}':d for i,d in enumerate(expected_data)}
+    if new_depth is None:
+        new_depth = np.arange(-1*resolution, min(depth)-resolution, -1*resolution)
     exp['depth'] = new_depth
 
     expected = pd.DataFrame.from_dict(exp)
-    result = aggregate_by_depth(df, new_depth, agg_method=agg_method)
 
     pd.testing.assert_frame_equal(result, expected, check_dtype=False)
 

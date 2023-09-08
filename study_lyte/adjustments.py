@@ -155,23 +155,40 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None):
     return result
 
 
-def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
+def aggregate_by_depth(df, new_depth=None, resolution=None, df_depth_col='depth', agg_method='mean'):
     """
     Aggregate the dataframe by the new depth using whatever method
     provided. Data in the new depth is considered to be the bottom of
     the aggregation e.g. 10, 20 == 0-10, 11-20 etc
     Depth data must be monotonic.
     new_depth data much be coarser than current depth data
+
+    Args:
+        df: Dataframe containing at least depth as a columne
+        new_depth: Optional array of depth positions to aggregate to (useful for arbitrary delineations e.g. hand hardness)
+        resolution: Aggregate to a resolution in centimeter. Optional
+        df_depth_col: Column name for depth
+        agg_method: Method to aggregate
+
+
     """
+    # Determine new depth data
+    if new_depth is None:
+        resolution = -1 * abs(resolution)
+        new_depth = np.arange(resolution, df[df_depth_col].min() + resolution, resolution)
+
+    # Determine datum type
     if new_depth[-1] < 0:
         surface_datum = True
     else:
         surface_datum = False
+
     if df.index.name is not None:
         df = df.reset_index()
     dcol = df_depth_col
     cols = [c for c in df.columns if c not in [dcol, 'time']]
     new = []
+
     # is the user request specific aggregation by column
     agg_col_specific = True if type(agg_method) == dict else False
 
@@ -195,6 +212,7 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
                 ind = ind & (df[dcol] >= d1)
             else:
                 ind = ind & (df[dcol] > d1)
+
         if agg_col_specific:
             for z,c in enumerate(cols):
                 nr = getattr(df[c][ind], agg_method[c])()
