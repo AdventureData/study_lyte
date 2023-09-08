@@ -198,9 +198,6 @@ def test_assume_no_upward_motion(data, method, expected):
 def test_assume_no_upward_motion_real(raw_df, fname, column, method, expected_depth):
     result = assume_no_upward_motion(raw_df[column], method=method)
     delta_d = abs(result.max() - result.min())
-    from study_lyte.plotting import plot_ts
-    ax = plot_ts(raw_df[column] - raw_df[column].max(), alpha=0.5, show=False)
-    ax = plot_ts(result - result.max(), ax=ax, show=True)
     assert pytest.approx(delta_d, abs=3) == expected_depth
 
 
