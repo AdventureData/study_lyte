@@ -33,3 +33,17 @@ Initial Development (2022-01-29)
 * Added a top level profile class to manage readings
 * Added in more plotting tools
 * Improved testing
+
+0.6.0 (2023-09-08)
+--------------------------------
+
+* Added styles submodule
+* Auto ZPFO of under filtered baro data
+* Added coverage badge
+* Improved testing
+* Profiles for legacy data
+* Addition of distance traveled metrics
+* Added MOE stats calcs
+* Added API to read the docs
+* Added in pressure profile
+* Improved surface detection
