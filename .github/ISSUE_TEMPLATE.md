@@ -1,4 +1,4 @@
-* Study Lyte  version:
+* Study Lyte version:
 * Python version:
 * Operating System:
 
