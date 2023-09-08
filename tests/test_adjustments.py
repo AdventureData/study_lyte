@@ -1,7 +1,7 @@
 from study_lyte.adjustments import (get_directional_mean, get_neutral_bias_at_border, get_normalized_at_border, \
                                     merge_time_series, remove_ambient, apply_calibration,
                                     aggregate_by_depth, get_points_from_fraction, assume_no_upward_motion,
-                                    convert_force_to_pressure)
+                                    convert_force_to_pressure, merge_on_to_time, zfilter)
 import pytest
 import pandas as pd
 import numpy as np
@@ -65,6 +65,20 @@ def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_
     result = get_normalized_at_border(df['data'], fractional_basis=fractional_basis, direction=direction)
     assert result.iloc[ideal_norm_index] == 1
 
+@pytest.mark.parametrize('data1_hz, data2_hz, desired_hz', [
+    (10, 5, 20)
+])
+def test_merge_on_to_time(data1_hz, data2_hz, desired_hz):
+    df1 = pd.DataFrame({'data1':np.arange(1,stop=data1_hz+1), 'time': np.arange(0, 1, 1 / data1_hz)})
+    df2 = pd.DataFrame({'data2':np.arange(100,stop=data2_hz+100), 'time': np.arange(0, 1, 1 / data2_hz)})
+    desired =  np.arange(0, 1, 1 / desired_hz)
+
+    final = merge_on_to_time([df1, df2], desired)
+    # Ensure we have essentially the same timestep
+    tsteps = np.unique(np.round(final['time'].diff(), 6))
+    tsteps = tsteps[~np.isnan(tsteps)]
+    # Assert only a nan and a real number exist for timesteps
+    assert tsteps == np.round(1/desired_hz, 6)
 
 @pytest.mark.parametrize('data_list, expected', [
     # Typical use, low sample to high res
@@ -198,3 +212,11 @@ def test_convert_force_to_pressure(force, tip_diameter, adj, expected):
     expected = pd.Series(np.array(expected).astype(float), index=range(0, len(expected)))
     result = convert_force_to_pressure(force_series, tip_diameter, adj)
     pd.testing.assert_series_equal(result, expected)
+
+@pytest.mark.parametrize('data, fraction, expected', [
+    # Test a simple noise data situation
+    ([0, 10, 0, 20, 0, 30], 0.4, [2.5, 5., 7.5, 10., 12.5, 22.5]),
+])
+def test_zfilter(data, fraction, expected):
+    result = zfilter(pd.Series(data), fraction)
+    np.testing.assert_equal(result, expected)
