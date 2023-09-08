@@ -37,7 +37,7 @@ jobs:
       - name: Run coverage
         run: |
           coverage run --source study_lyte -m pytest
-          coverage json
+          coverage json -o ./coverage/coverage-summary.json
 
       # Add this
       - name: Update Coverage Badge
