@@ -39,6 +39,7 @@ jobs:
           coverage run --source study_lyte -m pytest
           coverage json -o ./coverage/coverage-summary.json
 
+
       # Add this
       - name: Update Coverage Badge
         # GitHub actions: default branch variable
