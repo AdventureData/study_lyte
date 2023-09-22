@@ -7,7 +7,7 @@ import pytest
 class TestLinearRegression:
     @pytest.fixture(scope='class')
     def input_data(self):
-        df = pd.DataFrame({'Force': [1, 2, 3]})
+        df = pd.DataFrame({r'$\lambda$': [1, 2, 3]})
         return df
 
     @pytest.fixture(scope='class')
@@ -60,8 +60,16 @@ class TestLinearRegression:
         """
         Test the string representation works
         """
-        string_eq = str(relationship)
-        assert string_eq == 'alpha = 20.000*Force + 1.000'
+        string_eq = relationship.equation
+        assert string_eq == 'alpha = 20.000*lambda + 1.000'
+
+    def test_renderable_equation(self, relationship):
+        """
+        Test the string representation works
+        """
+        string_eq = relationship.rendered_equation
+        assert '$' in string_eq
+        assert '$' not in relationship.equation
 
     def test_representation_before_regression(self):
         """
@@ -69,11 +77,11 @@ class TestLinearRegression:
         """
         rel = LinearRegression()
         string_eq = str(rel)
-        assert string_eq == 'Data Estimation: Pre-fit'
+        assert string_eq == 'Linear Regression: Data (Pre-fit)'
 
-    def test_eq_predefined(self, relationship_predefined):
+    def test_equation_predefined(self, relationship_predefined):
         """
         Test the string representation works
         """
-        string_eq = str(relationship_predefined)
+        string_eq = relationship_predefined.equation
         assert string_eq == 'data = 10.000*Z + 11.000*Y + 1.000'

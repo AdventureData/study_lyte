@@ -16,6 +16,10 @@ class LinearRegression:
         self._coefficients = coefficients
         self._name = predicted_name
         self._coefficient_names = coefficient_names
+        # String holder for a plain text equation and one renderable for latex
+        self._equation = None
+        self._rendered_equation = None
+
 
     @property
     def coefficients(self):
@@ -31,10 +35,9 @@ class LinearRegression:
             # Use made up variables.
             if self.coefficients:
                 self._coefficient_names = [f"{ascii_uppercase[-1*(i+1)]}" for i,c in enumerate(self.coefficients[0:-1])]
-                self._coefficient_names.append('')
 
-            elif len(self._coefficient_names) != len(self.coefficients):
-                self._coefficient_names.append('')
+        if len(self._coefficient_names) != len(self.coefficients):
+            self._coefficient_names.append('')
 
         return self._coefficient_names
 
@@ -45,20 +48,37 @@ class LinearRegression:
             self._name = 'data'
         return self._name
 
+    @property
+    def equation(self):
+        """Useful string representation of resulting equation"""
+        if self._equation is None:
+            self._equation = self.get_equation_string()
+        return self._equation
+
+    @property
+    def rendered_equation(self):
+        """Useful string representation"""
+        if self._rendered_equation is None:
+            self._rendered_equation = self.get_equation_string(rendered=True)
+        return self._rendered_equation
+
     def regress(self, input_df, output_series):
         """
         Take a pandas dataframe and form a regression against the output series
         data
         Args:
-            input_df: Pandas Dataframe containing inputs to the regression. Column names are used in equation
+            input_df: Pandas Dataframe containing inputs to the regression. Column names are used in equation.
+            if columns names are written in latex, they can be rendered in rendered equation for matplotlib
             output_series: Data to regress against
         """
         columns = list(input_df.columns)
-        # Set string columns names anytime we regress no matter what?
+        # Set string columns names anytime we regress. Clear our equation string
         self._coefficient_names = columns
+        self._equation = None
+        self._rendered_equation = None
 
         a_matrix = np.vstack([input_df[c] for c in columns] + [np.ones(len(input_df.index))]).T
-        self._coefficients = np.linalg.lstsq(a_matrix, output_series, rcond=None)[0]
+        self._coefficients = list(np.linalg.lstsq(a_matrix, output_series, rcond=None)[0])
 
     def predict(self, input_df):
         """
@@ -108,10 +128,31 @@ class LinearRegression:
                 'min absolut point error': {'value': abs_diff.min(), 'percent': p_abs_diff.min()},
                 }
 
-    def __repr__(self):
-        if self.coefficients == []:
-            result = f'{self.name.title()} Estimation: Pre-fit'
+    @staticmethod
+    def quality_report(results):
+        """
+        Args:
+            results: Dictionary from quality function
+        Returns:
+            string of quality info
+        """
+        string_report = ''
+        for k,v in results.items():
+            string_report += f"{k.title()} = {v['value']:0.2f} ({v['percent']:0.2%})"
+        return string_report
 
+    def get_equation_string(self, rendered=False):
+        """
+        Generate the string representation for the equation.
+        Args:
+            rendered: Keep any render indicators like $ \ etc to get greek repr and various subscripts to be rendered in things
+                like matplotlib. Otherwise remove them.
+        Returns:
+            equation: string equation
+        """
+        # No coefficients available, then there is no known fit
+        if not self.coefficients:
+            result = f'{self.name.title()} (Pre-fit)'
         else:
             result = f"{self.name} = "
             i = 0
@@ -119,7 +160,14 @@ class LinearRegression:
                 c_str = f"{abs(c):0.3f}"
 
                 if v:
-                    term = f"{c_str}*{v}"
+                    if not rendered:
+                        # Remove any render indicators e.g. r"$\rho_E$
+                        variable = v.replace('$', '').replace("\\", '')
+                    else:
+                        variable = v
+
+                    term = rf"{c_str}*{variable}"
+
                 else:
                     term = c_str
 
@@ -135,3 +183,6 @@ class LinearRegression:
                 i += 1
 
         return result
+
+    def __repr__(self):
+        return f'Linear Regression: {self.equation}'
