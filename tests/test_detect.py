@@ -1,4 +1,5 @@
-from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
+from study_lyte.detect import (get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface,
+                               get_nir_stop, find_nearest_value_index)
 from study_lyte.io import read_csv
 from study_lyte.adjustments import remove_ambient, get_neutral_bias_at_border
 import pytest
@@ -11,6 +12,20 @@ from os.path import join
 def messy_acc(data_dir):
     df, meta = read_csv(join(data_dir, 'messy_acceleration.csv'))
     return df
+
+@pytest.mark.parametrize('value, arr, expected', [
+    # Test simple usage
+    (10, [0,11,5,4], 1),
+    # Tes no real matches found
+    (10, [0, 0, 0, 0], 0),
+    # Test perfect split picks the lesser of the 2.
+    (10, [1, 11.5, 10.5, 0], 2)
+
+])
+def test_find_nearest_value_index(value, arr, expected):
+    series = pd.Series(arr)
+    idx = find_nearest_value_index(value, series)
+    assert idx == expected
 
 
 @pytest.mark.parametrize("data, threshold, direction, max_threshold, n_points, expected", [

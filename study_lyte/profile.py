@@ -232,9 +232,6 @@ class LyteProfileV6:
                 else:
                     idx = self.start.index
                 self._barometer = BarometerDepth(baro, idx, self.stop.index)
-            # from .plotting import plot_ts
-            # ax = plot_ts(self.accelerometer.depth.values, events=[('start', idx)], show=False)
-            # plot_ts(self._barometer.depth.values, events=[('start', idx)], ax=ax)
 
             return self._barometer
 
@@ -458,12 +455,13 @@ class LyteProfileV6:
             # The deeper we go the more the baro constrains
             baro_bottom = baro_depth.min()
             acc_bottom = acc_depth.min()
-            scale = abs(acc_bottom / 100)
             avg_bottom = avg.min()
 
             # Scale total
-            delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
-            avg = (avg / avg_bottom) * delta
+            sensor_diff = abs(acc_bottom) - abs(baro_bottom)
+            delta = 0.572 * abs(acc_bottom) + 0.308 * abs(baro_bottom) + 0.264 * sensor_diff + 8.916
+            # delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
+            avg = (avg / avg_bottom) * -1*delta
             return avg
 
 

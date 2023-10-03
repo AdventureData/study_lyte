@@ -4,6 +4,13 @@ from scipy.signal import find_peaks, argrelextrema
 from .adjustments import get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction
 from .decorators import directional
 
+def find_nearest_value_index(search_value, series):
+    """
+    Given an array and a value, this function finds the index of the
+    value closest to the search value
+    """
+    idx = np.abs(search_value - series).argmin()
+    return idx
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """

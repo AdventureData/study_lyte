@@ -19,7 +19,16 @@ class LinearRegression:
         # String holder for a plain text equation and one renderable for latex
         self._equation = None
         self._rendered_equation = None
+        self._n_points = None
 
+    @property
+    def n_points(self):
+        """Number of records used for the regression, may be 'Unknown' in the event that the
+         relationship is pre-computed
+         """
+        if self._n_points is None:
+            self._n_points = 'Unknown'
+        return self._n_points
 
     @property
     def coefficients(self):
@@ -76,6 +85,7 @@ class LinearRegression:
         self._coefficient_names = columns
         self._equation = None
         self._rendered_equation = None
+        self._n_points = len(input_df.index)
 
         a_matrix = np.vstack([input_df[c] for c in columns] + [np.ones(len(input_df.index))]).T
         self._coefficients = list(np.linalg.lstsq(a_matrix, output_series, rcond=None)[0])
@@ -125,7 +135,7 @@ class LinearRegression:
                 # Absolute value
                 'mean absolute point error': {'value': abs_diff.mean(), 'percent': p_abs_diff.mean()},
                 'max absolute point error': {'value': abs_diff.max(), 'percent': p_abs_diff.max()},
-                'min absolut point error': {'value': abs_diff.min(), 'percent': p_abs_diff.min()},
+                'min absolute point error': {'value': abs_diff.min(), 'percent': p_abs_diff.min()},
                 }
 
     @staticmethod
@@ -138,7 +148,7 @@ class LinearRegression:
         """
         string_report = ''
         for k,v in results.items():
-            string_report += f"{k.title()} = {v['value']:0.2f} ({v['percent']:0.2%})"
+            string_report += f"{k.title()} = {v['value']:0.2f} ({v['percent']:0.2%})\n"
         return string_report
 
     def get_equation_string(self, rendered=False):
@@ -160,13 +170,7 @@ class LinearRegression:
                 c_str = f"{abs(c):0.3f}"
 
                 if v:
-                    if not rendered:
-                        # Remove any render indicators e.g. r"$\rho_E$
-                        variable = v.replace('$', '').replace("\\", '')
-                    else:
-                        variable = v
-
-                    term = rf"{c_str}*{variable}"
+                    term = rf"{c_str}*{v}"
 
                 else:
                     term = c_str
@@ -182,7 +186,10 @@ class LinearRegression:
                 result += f'{joiner}{term}'
                 i += 1
 
+        if not rendered:
+            result.replace('$', '').replace("\\", '')
+
         return result
 
     def __repr__(self):
-        return f'Linear Regression: {self.equation}'
+        return f'Linear Regression (N = {self.n_points}): {self.equation}'
