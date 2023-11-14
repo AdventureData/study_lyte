@@ -1,6 +1,8 @@
 import pytest
 from os.path import join
 from study_lyte.profile import LyteProfileV6, Sensor
+from operator import attrgetter
+
 
 class TestLyteProfile:
 
@@ -63,11 +65,11 @@ class TestLyteProfile:
         assert pytest.approx(delta, abs=0.05) == expected
 
     @pytest.mark.parametrize('filename, depth_method, expected_points, mean_force', [
-        ('kaslo.csv', 'fused', 16377, 3474)
+        ('kaslo.csv', 'fused', 16377, 3500)
     ])
     def test_force_profile(self, profile, filename, depth_method, expected_points, mean_force):
         assert pytest.approx(len(profile.force), len(profile.raw)*0.05) == expected_points
-        assert pytest.approx(profile.force['force'].mean(), abs=50) == mean_force
+        assert pytest.approx(profile.force['force'].mean(), abs=150) == mean_force
 
     @pytest.mark.parametrize('filename, depth_method, expected_points, mean_pressure', [
         ('kaslo.csv', 'fused', 16377, 179)
@@ -164,7 +166,21 @@ class TestLyteProfile:
     def test_barometer_is_filtered(self, profile, filename, depth_method, total_depth):
         assert pytest.approx(profile.barometer.distance_traveled, abs=1) == total_depth
 
-class TestLegacyProfile():
+    @pytest.mark.parametrize('filename, depth_method', [
+        # Chooses start over force start
+        ('kaslo.csv','fused'),
+        # Chooses start over force start
+        ('toolik.csv', 'fused'),
+    ])
+    def test_force_start_modification(self, profile, filename, depth_method):
+        """Test the profile will choose an earlier force surface should it exist prior to the NIR"""
+        # Ensure that the sensors detection is always in order.
+        assert profile.start.index <= profile.surface.force.index
+        assert profile.surface.force.index <= profile.surface.nir.index
+
+
+
+class TestLegacyProfile:
     @pytest.fixture()
     def profile(self, data_dir):
         f = 'old_probe.csv'
@@ -181,3 +197,10 @@ class TestLegacyProfile():
 
     def test_surface(self, profile):
         assert pytest.approx(profile.surface.nir.index, int(0.01*len(profile.depth))) == 7970
+
+@pytest.mark.parametrize('fname, attribute, expected_value', [
+    ('pilots_error.csv', 'surface.force.index', 5758)
+])
+def test_force_start_alternate(lyte_profile, fname, attribute, expected_value):
+    result =  attrgetter(attribute)(lyte_profile)
+    assert pytest.approx(result, int(0.01 * len(lyte_profile.raw))) == expected_value

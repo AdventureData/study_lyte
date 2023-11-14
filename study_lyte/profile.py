@@ -7,7 +7,7 @@ import numpy as np
 
 from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
-from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
+from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start
 from .depth import AccelerometerDepth, BarometerDepth
 from .logging import setup_log
 import logging
@@ -306,11 +306,23 @@ class LyteProfileV6:
                 # Event according to the force sensor
                 force_surface_depth = depth + self.surface_detection_offset
                 f_idx = abs(self.depth - force_surface_depth).argmin()
+                # Retrieve force estimated start
+                f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.3, threshold=-0.3)
+                # If the force start is before the NIR start then adjust
+                if f_start < self.start.index:
+                    LOG.info('Choosing motion start over force start...')
+                    f_idx = self.start.index
+                    force_surface_depth = self.depth.iloc[f_idx]
+
+                elif f_start < f_idx:
+                    LOG.info('Choosing force start point over nir...')
+                    f_idx = f_start
+                    force_surface_depth = self.depth.iloc[f_idx]
 
                 force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
                 self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
 
-                # Allow surface detection to modify the start if we have conflict.
+                # Allow surface detection to modify the start if there is conflict.
                 if nir.time < self.start.time:
                     self._start = nir
                     self._start.name = 'start'

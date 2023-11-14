@@ -1,4 +1,4 @@
-from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop
+from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start
 from study_lyte.io import read_csv
 from study_lyte.adjustments import remove_ambient, get_neutral_bias_at_border
 import pytest
@@ -96,6 +96,7 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('gm_data.csv', 'Y-Axis', 8553),
     ('toolik.csv', 'Y-Axis', 17610),
     ('egrip.csv','Y-Axis', 14378),
+    ('pilots_error.csv', 'Y-Axis', 12843),
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
@@ -176,3 +177,10 @@ def test_get_nir_stop_real(raw_df, fname, surface_idx):
     result = get_nir_stop(raw_df['Sensor3'])
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(surface_idx, abs=int(0.05 * len(raw_df.index))) == result
+
+@pytest.mark.parametrize('fname, column, expected_first_change', [
+    ('pilots_error.csv', 'Sensor1', 5758)
+])
+def test_sensor_start(raw_df, fname, column, expected_first_change):
+    first_change = get_sensor_start(raw_df[column])
+    assert pytest.approx(first_change, abs=int(0.02 * len(raw_df.index))) == expected_first_change

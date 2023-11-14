@@ -145,12 +145,22 @@ def get_acceleration_stop(acceleration, threshold=-0.05, max_threshold=0.05):
     if n > 40:
         n = 20
 
-    max_ind = np.argwhere(acceleration == acceleration.min())[0][0]
-    acceleration_stop = get_signal_event(acceleration[max_ind:], threshold=threshold,
+    min_idx = np.argwhere(acceleration == acceleration.min())[0][0]
+    max_idx = np.argwhere(acceleration == acceleration.max())[0][0]
+    # Large impact early in during the accelerating down
+    if min_idx < max_idx:
+        # Find the deceleration later than the maximum deceleration
+        search_start = np.argwhere(acceleration[max_idx:] == acceleration[max_idx:].min())[0][0]
+        search_start += max_idx
+    else:
+        # Use the farthest deceleration
+        search_start = min_idx
+
+    acceleration_stop = get_signal_event(acceleration[search_start:], threshold=threshold,
                                          max_threshold=max_threshold,
                                          n_points=n,
                                          search_direction='backward')
-    acceleration_stop = acceleration_stop + max_ind
+    acceleration_stop = acceleration_stop + search_start
     return acceleration_stop
 
 
@@ -203,3 +213,15 @@ def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.008, threshold=-
 
     return stop
 
+
+def get_sensor_start(signal, fractional_basis=0.05, max_threshold=0.05, threshold=-0.05):
+    """
+    Before entering the snow we don't see much dynamic signal. This detects the first change in the signal
+    """
+    ind = np.where(signal == signal.max())[0][0]
+    n_points = get_points_from_fraction(len(signal), 0.01)
+    data = signal[:ind]
+    norm_signal = get_normalized_at_border(data, fractional_basis=fractional_basis, direction='forward') - 1
+    first_change = get_signal_event(norm_signal, search_direction='forward', threshold=threshold,
+                            max_threshold=max_threshold, n_points=n_points)
+    return first_change
