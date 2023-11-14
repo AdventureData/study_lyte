@@ -219,7 +219,7 @@ def get_sensor_start(signal, fractional_basis=0.05, max_threshold=0.05, threshol
     Before entering the snow we don't see much dynamic signal. This detects the first change in the signal
     """
     ind = np.where(signal == signal.max())[0][0]
-    n_points = get_points_from_fraction(len(signal), 0.1)
+    n_points = get_points_from_fraction(len(signal), 0.01)
     data = signal[:ind]
     norm_signal = get_normalized_at_border(data, fractional_basis=fractional_basis, direction='forward') - 1
     first_change = get_signal_event(norm_signal, search_direction='forward', threshold=threshold,
