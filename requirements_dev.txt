@@ -12,3 +12,5 @@ pytest==6.2.4
 matplotlib
 nbconvert
 coverage
+sphinxcontrib.apidoc
+nbsphinx

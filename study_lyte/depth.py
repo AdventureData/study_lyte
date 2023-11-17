@@ -96,7 +96,7 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
         soft_stop = len(baro_depth.index) - 1
 
     valley_search = baro_depth.iloc[mid:].values
-    v_min = valley_search.min()
+    v_min = np.nanmin(valley_search)
     vmin_idx = np.where(valley_search == v_min)[0][0]
     bottom = nearest_peak(-1 * valley_search, stop - mid, default_index=vmin_idx, height=-10, distance=100)
     bottom += mid

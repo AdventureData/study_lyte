@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from .styles import EventStyle
 
 def plot_events(ax, profile_events, plot_type='normal', event_alpha=0.6):
     """
