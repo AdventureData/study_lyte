@@ -86,8 +86,17 @@ class LinearRegression:
         self._equation = None
         self._rendered_equation = None
         self._n_points = len(input_df.index)
-
         a_matrix = np.vstack([input_df[c] for c in columns] + [np.ones(len(input_df.index))]).T
+        # Filter out rows with Nans
+        final = []
+        final_output = []
+        for i in range(a_matrix.shape[0]):
+            if not np.any(np.isnan(a_matrix[i])) and not np.isnan(output_series[i]):
+                final.append(a_matrix[i])
+                final_output.append(output_series[i])
+        a_matrix = np.array(final)
+        output_series = np.array(final_output)
+
         self._coefficients = list(np.linalg.lstsq(a_matrix, output_series, rcond=None)[0])
 
     def predict(self, input_df):
