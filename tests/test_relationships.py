@@ -77,7 +77,7 @@ class TestLinearRegression:
         """
         rel = LinearRegression()
         string_eq = str(rel)
-        assert string_eq == 'Linear Regression: Data (Pre-fit)'
+        assert string_eq == 'Linear Regression (N = Unknown): Data (Pre-fit)'
 
     def test_equation_predefined(self, relationship_predefined):
         """
