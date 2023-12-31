@@ -304,15 +304,15 @@ class LyteProfileV6:
                 force_surface_depth = depth + self.surface_detection_offset
                 f_idx = abs(self.depth - force_surface_depth).argmin()
                 # Retrieve force estimated start
-                f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.3, threshold=-0.3)
+                f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
                 # If the force start is before the NIR start then adjust
                 if f_start < self.start.index:
-                    LOG.info('Choosing motion start over force start...')
+                    LOG.info(f'Choosing motion start ({self.start.index}) over force start ({f_start})...')
                     f_idx = self.start.index
                     force_surface_depth = self.depth.iloc[f_idx]
 
                 elif f_start < f_idx:
-                    LOG.info('Choosing force start point over nir...')
+                    LOG.info(f'Choosing force start ({f_start}) over nir derived ({f_idx})...')
                     f_idx = f_start
                     force_surface_depth = self.depth.iloc[f_idx]
 
