@@ -225,10 +225,42 @@ def get_sensor_start(signal, fractional_basis=0.05, max_threshold=0.05, threshol
     """
     Before entering the snow we don't see much dynamic signal. This detects the first change in the signal
     """
-    ind = np.where(signal == signal.max())[0][0]
+    ind = np.where(signal == signal.min())[0][0]
     n_points = get_points_from_fraction(len(signal), 0.01)
     data = signal[:ind]
     norm_signal = get_normalized_at_border(data, fractional_basis=fractional_basis, direction='forward') - 1
     first_change = get_signal_event(norm_signal, search_direction='forward', threshold=threshold,
                             max_threshold=max_threshold, n_points=n_points)
+    # from .plotting import plot_ts
+    # plot_ts(signal, events=[('start', first_change)], show=True)
     return first_change
+
+
+def get_ground_strike(signal, stop_idx):
+    """
+    The probe hits ground somtimes before we detect stop.
+    """
+    buffer = get_points_from_fraction(len(signal), 0.1)
+    start = stop_idx - buffer
+    end = stop_idx + buffer
+    stop_idx = stop_idx if stop_idx < len(signal) else len(signal)
+    norm = get_neutral_bias_at_border(signal[start:end], direction='backward')
+    diff = norm.diff()
+
+    # Large chunk of data thats the same near the stop
+    n_points = get_points_from_fraction(len(norm), 0.01)
+    ground1 = get_signal_event(norm, threshold=-100, max_threshold=100, n_points=n_points, search_direction='backward')
+    ground1 += start
+    # Large change in signal
+    ground2 = get_signal_event(diff, threshold=-1000, max_threshold=-100, n_points=None, search_direction='forward')
+    ground2 += start
+
+    if ground2 == ground1 and ground2 != stop_idx:
+        ground = ground2
+    else:
+        ground = -1
+
+    from .plotting import  plot_ts
+    plot_ts(norm, events=[('stop',stop_idx), ('ground1', ground1),('ground2', ground2) ])
+
+    return ground

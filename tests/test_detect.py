@@ -1,5 +1,5 @@
 from study_lyte.detect import (get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface,
-                               get_nir_stop, get_sensor_start, find_nearest_value_index)
+                               get_nir_stop, get_sensor_start, find_nearest_value_index, get_ground_strike)
 from study_lyte.io import read_csv
 from study_lyte.adjustments import remove_ambient, get_neutral_bias_at_border
 import pytest
@@ -199,3 +199,14 @@ def test_get_nir_stop_real(raw_df, fname, surface_idx):
 def test_sensor_start(raw_df, fname, column, expected_first_change):
     first_change = get_sensor_start(raw_df[column])
     assert pytest.approx(first_change, abs=int(0.02 * len(raw_df.index))) == expected_first_change
+
+@pytest.mark.parametrize('fname, expected_ground_strike', [
+    ('pilots_error.csv', 12031),
+    ('toolik.csv', 17922),
+    ('egrip_tough_surface.csv', -1),
+])
+def test_get_ground_strike(raw_df, expected_ground_strike):
+    backward_accel = get_neutral_bias_at_border(raw_df['Y-Axis'], direction='backward')
+    stop = get_acceleration_stop(backward_accel)
+    idx = get_ground_strike(raw_df['Sensor1'], stop)
+    assert pytest.approx(idx, abs=int(0.02 * len(raw_df.index))) == expected_ground_strike
