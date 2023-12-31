@@ -203,7 +203,7 @@ def test_sensor_start(raw_df, fname, column, expected_first_change):
 @pytest.mark.parametrize('fname, expected_ground_strike', [
     ('pilots_error.csv', 12031),
     ('toolik.csv', 17922),
-    ('egrip_tough_surface.csv', -1),
+    ('egrip_tough_surface.csv', None),
 ])
 def test_get_ground_strike(raw_df, expected_ground_strike):
     backward_accel = get_neutral_bias_at_border(raw_df['Y-Axis'], direction='backward')

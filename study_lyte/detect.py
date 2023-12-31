@@ -240,7 +240,7 @@ def get_ground_strike(signal, stop_idx):
     """
     The probe hits ground somtimes before we detect stop.
     """
-    buffer = get_points_from_fraction(len(signal), 0.1)
+    buffer = get_points_from_fraction(len(signal), 0.05)
     start = stop_idx - buffer
     end = stop_idx + buffer
     stop_idx = stop_idx if stop_idx < len(signal) else len(signal)
@@ -254,13 +254,14 @@ def get_ground_strike(signal, stop_idx):
     # Large change in signal
     ground2 = get_signal_event(diff, threshold=-1000, max_threshold=-100, n_points=None, search_direction='forward')
     ground2 += start
+    tol = get_points_from_fraction(len(norm), 0.06)
 
-    if ground2 == ground1 and ground2 != stop_idx:
+    if (ground2-tol) <= ground1 <= (ground2+tol) and ground2 != stop_idx:
         ground = ground2
     else:
-        ground = -1
+        ground = None
 
-    from .plotting import  plot_ts
-    plot_ts(norm, events=[('stop',stop_idx), ('ground1', ground1),('ground2', ground2) ])
+    # from .plotting import  plot_ts
+    # plot_ts(norm, events=[('stop',stop_idx), ('ground1', ground1),('ground2', ground2) ])
 
     return ground

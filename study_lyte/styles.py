@@ -9,7 +9,9 @@ class EventStyle(Enum):
     START = 'g', '--', 1
     STOP = 'r', '--',  1
     SURFACE = 'lightsteelblue', '--', 1
+    GROUND = 'sienna', '--', 1
     ERROR = 'orangered', 'dotted',   1
+
     UNKNOWN = 'k', '--', 1
 
     @classmethod

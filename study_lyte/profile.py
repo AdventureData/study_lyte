@@ -7,7 +7,7 @@ import numpy as np
 
 from . io import read_csv
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
-from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start
+from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
 from .depth import AccelerometerDepth, BarometerDepth
 from .logging import setup_log
 import logging
@@ -72,6 +72,7 @@ class LyteProfileV6:
             self._stop = None
             self._surface = None
             self._error = None
+            self._ground = None
 
         @staticmethod
         def process_df(df):
@@ -325,6 +326,17 @@ class LyteProfileV6:
                     self._start.name = 'start'
 
             return self._surface
+        @property
+        def ground(self):
+            """Event for ground detection"""
+            if self._ground is None:
+                ground = get_ground_strike(self.raw['Sensor1'], self.stop.index)
+                if ground is not None:
+                    self._ground = Event(name='ground', index=ground, depth=self.depth.iloc[ground], time=self.raw['time'].iloc[ground])
+                else:
+                    self._ground = Event(name='ground', index=None, depth=None, time=None)
+
+            return self._ground
 
         @property
         def error(self):
@@ -391,7 +403,7 @@ class LyteProfileV6:
             """
             Return all the common events recorded
             """
-            return [self.start, self.stop, self.surface.nir, self.surface.force, self.error]
+            return [self.start, self.stop, self.surface.nir, self.surface.force, self.ground, self.error]
 
         @staticmethod
         def get_motion_name(columns):
@@ -433,8 +445,9 @@ class LyteProfileV6:
             profile_string += msg.format('Resolution', f'{self.resolution:0.1f} pts/cm')
             profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
             profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
-            profile_string += msg.format('Error Detected:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
-            profile_string += msg.format('Upward Motion?:', "True" if self.has_upward_motion else "False")
+            profile_string += msg.format('Ground Strike:', 'True' if self.ground.time is not None else 'False')
+            profile_string += msg.format('Upward Motion:', "True" if self.has_upward_motion else "False")
+            profile_string += msg.format('Errors:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
 
             profile_string += '-' * (len(header)-2) + '\n'
             return profile_string
