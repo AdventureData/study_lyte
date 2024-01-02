@@ -169,7 +169,8 @@ class LyteProfileV6:
             """
             if self._nir is None:
                 self._nir = pd.DataFrame({'nir': self.raw['nir'].values, 'depth': self.depth.values})
-                self._nir = self._nir.iloc[self.surface.nir.index:self.stop.index].reset_index()
+                end = self.stop.index if self.ground.index is None else self.ground.index
+                self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
                 self._nir = self._nir.drop(columns='index')
                 self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
             return self._nir
@@ -187,7 +188,9 @@ class LyteProfileV6:
                     force = self.raw['Sensor1'].values
 
                 self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
-                self._force = self._force.iloc[self.surface.force.index:self.stop.index].reset_index()
+                # prefer a ground index if available
+                end = self.stop.index if self.ground.index is None else self.ground.index
+                self._force = self._force.iloc[self.surface.force.index:end].reset_index()
                 self._force = self._force.drop(columns='index')
                 if not self._force.empty:
                     self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
@@ -306,6 +309,8 @@ class LyteProfileV6:
                 f_idx = abs(self.depth - force_surface_depth).argmin()
                 # Retrieve force estimated start
                 f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
+                f_start = f_start or f_idx
+
                 # If the force start is before the NIR start then adjust
                 if f_start < self.start.index:
                     LOG.info(f'Choosing motion start ({self.start.index}) over force start ({f_start})...')

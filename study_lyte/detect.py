@@ -102,14 +102,16 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
 
     # If no results are found, return the first index the series
     if len(ind) == 0:
-        event_idx = 0
+        event_idx = None
     else:
         # Return the first value matching the conditions
         event_idx = ind[-1]
 
     # Invert the index
-    if 'backward' in search_direction:
+    if 'backward' in search_direction and event_idx is not None:
         event_idx = len(arr) - 1 - event_idx
+        if event_idx == 0:
+            event_idx = None
 
     return event_idx
 
@@ -133,6 +135,8 @@ def get_acceleration_start(acceleration, threshold=-0.01, max_threshold=0.02):
     acceleration_start = get_signal_event(accel_neutral[0:max_ind+1], threshold=threshold, max_threshold=max_threshold,
                                           n_points=n_points,
                                           search_direction='forward')
+    if acceleration_start is None:
+        acceleration_start = 0
     return acceleration_start
 
 
@@ -167,7 +171,10 @@ def get_acceleration_stop(acceleration, threshold=-0.05, max_threshold=0.05):
                                          max_threshold=max_threshold,
                                          n_points=n,
                                          search_direction='backward')
-    acceleration_stop = acceleration_stop + search_start
+    if acceleration_stop is None:
+        acceleration_stop = len(acceleration) - 1
+    else:
+        acceleration_stop = acceleration_stop + search_start
     return acceleration_stop
 
 
@@ -240,7 +247,7 @@ def get_ground_strike(signal, stop_idx):
     """
     The probe hits ground somtimes before we detect stop.
     """
-    buffer = get_points_from_fraction(len(signal), 0.05)
+    buffer = get_points_from_fraction(len(signal), 0.08)
     start = stop_idx - buffer
     end = stop_idx + buffer
     stop_idx = stop_idx if stop_idx < len(signal) else len(signal)
@@ -250,18 +257,17 @@ def get_ground_strike(signal, stop_idx):
     # Large chunk of data thats the same near the stop
     n_points = get_points_from_fraction(len(norm), 0.01)
     ground1 = get_signal_event(norm, threshold=-100, max_threshold=100, n_points=n_points, search_direction='backward')
-    ground1 += start
+
     # Large change in signal
     ground2 = get_signal_event(diff, threshold=-1000, max_threshold=-100, n_points=None, search_direction='forward')
-    ground2 += start
     tol = get_points_from_fraction(len(norm), 0.06)
-
-    if (ground2-tol) <= ground1 <= (ground2+tol) and ground2 != stop_idx:
-        ground = ground2
-    else:
-        ground = None
-
-    # from .plotting import  plot_ts
-    # plot_ts(norm, events=[('stop',stop_idx), ('ground1', ground1),('ground2', ground2) ])
+    # from .plotting import plot_ts
+    ground = None
+    if ground2 is not None and ground1 is not None:
+        if (ground2-tol) <= ground1 <= (ground2+tol) and ground2 != stop_idx:
+            ground = ground2 + start
+    #         # plot_ts(norm, events=[('stop',stop_idx), ('ground1', ground1+start),('ground2', ground2+start) ])
+    # else:
+    #     plot_ts(norm, events=[('stop',stop_idx)])
 
     return ground
