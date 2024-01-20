@@ -11,6 +11,8 @@ class EventStyle(Enum):
     SURFACE = 'lightsteelblue', '--', 1
     GROUND = 'sienna', '--', 1
     ERROR = 'orangered', 'dotted',   1
+    IMPACT = 'cyan', 'dotted',   1
+    LONG_PRESS = 'magenta', 'dotted',   1
 
     UNKNOWN = 'k', '--', 1
 
