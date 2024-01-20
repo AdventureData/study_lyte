@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import lfilter
 
-def get_points_from_fraction(n_samples, fraction):
+def get_points_from_fraction(n_samples, fraction, maximum=None):
     """
     Return the nearest whole int from a fraction of the
     number of samples. Never returns 0.
@@ -10,6 +10,11 @@ def get_points_from_fraction(n_samples, fraction):
     idx = int(fraction * n_samples) or 1
     if idx == n_samples:
         idx = n_samples - 1
+
+    if maximum is not None:
+        if idx > maximum:
+            idx = maximum
+
     return idx
 
 
@@ -45,6 +50,25 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.00
     bias_adj = series - bias
     return bias_adj
 
+def get_neutral_bias_at_index(series: pd.Series, index, fractional_basis: float = 0.005):
+    """
+    Bias adjust the series data by using the XX % of the data centered on an provided index
+
+    Args:
+        series: pandas series of data with a known bias
+        fractional_basis: Fraction of data to use to estimate the bias on start
+    Returns:
+        bias_adj: bias adjusted data to near zero
+    """
+    n = get_points_from_fraction(len(series), fractional_basis)
+    start = index-n
+    start = start if start > 0 else 0
+    stop = index + n
+    stop = stop if stop < len(series) else len(series)-1
+
+    bias = series.values[start:stop].mean()
+    bias_adj = series - bias
+    return bias_adj
 
 def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, direction='forward'):
     """

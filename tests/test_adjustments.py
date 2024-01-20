@@ -7,14 +7,19 @@ import pandas as pd
 import numpy as np
 
 
-@pytest.mark.parametrize("n_samples, fraction, expected", [
-    (10, 0.5, 5),
-    (5, 0.95, 4),
-    (10, 0, 1),
-    (10, 1, 9),
+@pytest.mark.parametrize("n_samples, fraction, maximum, expected", [
+    (10, 0.5, None, 5),
+    (5, 0.95, None, 4),
+    (10, 0, None, 1),
+    (10, 1, None, 9),
+    # Test max overrides
+    (10, 1, 8, 8),
+    # Test max doesn't override in case where its less
+    (10, 0, 5, 1),
+
 ])
-def test_get_points_from_fraction(n_samples, fraction, expected):
-    idx = get_points_from_fraction(n_samples, fraction)
+def test_get_points_from_fraction(n_samples, fraction, maximum, expected):
+    idx = get_points_from_fraction(n_samples, fraction, maximum=maximum)
     assert idx == expected
 
 
