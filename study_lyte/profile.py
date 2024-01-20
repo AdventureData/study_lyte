@@ -168,7 +168,8 @@ class LyteProfileV6:
             Retrieve the Active NIR sensor with ambient NIR removed
             """
             if self._nir is None:
-                self._nir = pd.DataFrame({'nir': self.raw['nir'].values, 'depth': self.depth.values})
+                self._nir = self.raw[["Sensor2","Sensor3", "nir"]]
+                self._nir['depth'] = self.depth.values
                 end = self.stop.index if self.ground.index is None else self.ground.index
                 self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
                 self._nir = self._nir.drop(columns='index')
@@ -288,7 +289,11 @@ class LyteProfileV6:
                     idx = get_acceleration_stop(backward_accel)
                 else:
                     idx = get_nir_stop(self.raw['Sensor3'])
-                self._stop = Event(name='stop', index=idx, depth=None, time=self.raw['time'].iloc[idx])
+                if idx is not None:
+                    self._stop = Event(name='stop', index=idx, depth=None, time=self.raw['time'].iloc[idx])
+                else:
+                    self._stop = Event(name='stop', index=0, depth=None, time=self.raw['time'].iloc[0])
+
             return self._stop
 
         @property
