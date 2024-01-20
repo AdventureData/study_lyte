@@ -112,6 +112,7 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('toolik.csv', 'Y-Axis', 17610),
     ('egrip.csv','Y-Axis', 14378),
     ('pilots_error.csv', 'Y-Axis', 12843),
+    ('mores_20230119.csv', 'Y-Axis', 18600)
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
@@ -203,8 +204,9 @@ def test_sensor_start(raw_df, fname, column, expected_first_change):
 @pytest.mark.parametrize('fname, expected_ground_strike', [
     ('pilots_error.csv', 12031),
     ('toolik.csv', 17922),
+    ("ground_touch_and_go.csv", 15389),
     ('egrip_tough_surface.csv', None),
-    ('pilots.csv', None)
+    ('pilots.csv', None),
 ])
 def test_get_ground_strike(raw_df, expected_ground_strike):
     backward_accel = get_neutral_bias_at_border(raw_df['Y-Axis'], direction='backward')
