@@ -178,7 +178,12 @@ class TestLyteProfile:
         assert profile.start.index <= profile.surface.force.index
         assert profile.surface.force.index <= profile.surface.nir.index
 
-
+    def test_isolated_reading_metadata(self, data_dir):
+        """ Test the metadata can be read independently without parsing the whole file"""
+        profile = LyteProfileV6(join(data_dir, 'toolik.csv'))
+        metadata = profile.metadata
+        assert type(metadata) == dict
+        assert profile._raw is None
 
 class TestLegacyProfile:
     @pytest.fixture()

@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 
-from . io import read_csv
+from . io import read_data, find_metadata
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
 from .depth import AccelerometerDepth, BarometerDepth
@@ -49,6 +49,7 @@ class LyteProfileV6:
             self._meta = None
             self._accelerometer = None
             self._barometer = None
+            self.header_position = None
 
             self._depth = None # Final depth series used for analysis
             self._acceleration = None # No gravity acceleration
@@ -104,7 +105,8 @@ class LyteProfileV6:
             Pandas dataframe hold the data exactly as it read in.
             """
             if self._raw is None:
-                self._raw, self._meta = read_csv(str(self.filename))
+                metadata = self.metadata
+                self._raw, self._meta = read_data(str(self.filename), metadata, self.header_position)
                 self._raw = self.process_df(self.raw)
 
             return self._raw
@@ -114,22 +116,21 @@ class LyteProfileV6:
             """
             Returns a dictionary of all data held in the header portion of the csv
             """
-            if self._raw is None:
-                self._raw, self._meta = read_csv(str(self.filename))
-                self._raw = self.process_df(self.raw)
+            if self._meta is None:
+                self.header_position, self._meta = find_metadata(str(self.filename))
 
-            # Manage misc naming of the acceleration range
-            if 'ACC. Range' not in self._meta.keys():
-                if "ACCRANGE" in self._meta.keys():
-                    self._meta['ACC. Range'] = float(self._meta['ACCRANGE'])
+                # Manage misc naming of the acceleration range
+                if 'ACC. Range' not in self._meta.keys():
+                    if "ACCRANGE" in self._meta.keys():
+                        self._meta['ACC. Range'] = float(self._meta['ACCRANGE'])
+                    else:
+                        self._meta['ACC. Range'] = 2
+
                 else:
-                    self._meta['ACC. Range'] = 2
+                    self._meta['ACC. Range'] = float(self._meta['ACC. Range'])
 
-            else:
-                self._meta['ACC. Range'] = float(self._meta['ACC. Range'])
-
-            if 'ZPFO' in self._meta.keys():
-                self._meta['ZPFO'] = int(self._meta['ZPFO'])
+                if 'ZPFO' in self._meta.keys():
+                    self._meta['ZPFO'] = int(self._meta['ZPFO'])
 
             return self._meta
 
