@@ -174,9 +174,6 @@ def get_acceleration_stop(acceleration, threshold=-0.2, max_threshold=0.1):
         acceleration_stop = len(acceleration) - 1
     else:
         acceleration_stop = acceleration_stop + search_start
-    # from .plotting import plot_ts
-    # plot_ts(acceleration, events=[('stop', acceleration_stop), ('start', search_start)],
-    #         thresholds=[('min', threshold), ('max', max_threshold), ])
     return acceleration_stop
 
 
@@ -241,8 +238,6 @@ def get_sensor_start(signal, fractional_basis=0.05, max_threshold=0.05, threshol
     norm_signal = get_normalized_at_border(data, fractional_basis=fractional_basis, direction='forward') - 1
     first_change = get_signal_event(norm_signal, search_direction='forward', threshold=threshold,
                             max_threshold=max_threshold, n_points=n_points)
-    # from .plotting import plot_ts
-    # plot_ts(signal, events=[('start', first_change)], show=True)
     return first_change
 
 
@@ -273,7 +268,5 @@ def get_ground_strike(signal, stop_idx):
     if impact is not None and long_press is not None:
         if (long_press-tol) <= impact <= (long_press+tol):
             ground = impact + start
-    #
-    # from .plotting import plot_ground_strike
-    # plot_ground_strike(norm1, start, stop_idx, impact, long_press, ground)
+
     return ground

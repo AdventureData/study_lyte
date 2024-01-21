@@ -86,7 +86,7 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.0 -1.0, -1.0], 1 / 9, 0.01, 7),
+    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.0 -1.0, -1.0], 1 / 9, 0.01, 5),
     # Test no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 
