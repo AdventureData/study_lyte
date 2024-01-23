@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
+from shapely.geometry import Point
 
 from . io import read_data, find_metadata
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
@@ -24,7 +25,6 @@ class Event:
 class Sensor(Enum):
     """Enum for various scenarios that come up with variations of data"""
     UNAVAILABLE = -1
-
 
 
 class LyteProfileV6:
@@ -49,6 +49,7 @@ class LyteProfileV6:
             self._meta = None
             self._accelerometer = None
             self._barometer = None
+            self._point = None
             self.header_position = None
 
             self._depth = None # Final depth series used for analysis
@@ -439,6 +440,16 @@ class LyteProfileV6:
                 return candidates
             else:
                 return Sensor.UNAVAILABLE
+        @property
+        def point(self):
+            """Return shapely geometry point of the measurement location in EPSG 4326"""
+            if self._point is None:
+                if all([k in self.metadata.keys() for k in ['Latitude', 'Longitude']]):
+                    self._point = Point(float(self.metadata['Longitude']), float(self.metadata['Latitude']))
+                else:
+                    self._point = Sensor.UNAVAILABLE
+
+            return self._point
 
         def report_card(self):
             """

@@ -196,7 +196,7 @@ class LinearRegression:
                 i += 1
 
         if not rendered:
-            result.replace('$', '').replace("\\", '')
+            result = result.replace('$', '').replace("\\", '')
 
         return result
 

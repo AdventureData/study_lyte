@@ -60,8 +60,7 @@ class TestLinearRegression:
         """
         Test the string representation works
         """
-        string_eq = relationship.equation
-        assert string_eq == 'alpha = 20.000*lambda + 1.000'
+        assert relationship.equation == 'alpha = 20.000*lambda + 1.000'
 
     def test_renderable_equation(self, relationship):
         """
