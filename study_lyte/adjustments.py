@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import lfilter
 
-def get_points_from_fraction(n_samples, fraction):
+def get_points_from_fraction(n_samples, fraction, maximum=None):
     """
     Return the nearest whole int from a fraction of the
     number of samples. Never returns 0.
@@ -10,6 +10,11 @@ def get_points_from_fraction(n_samples, fraction):
     idx = int(fraction * n_samples) or 1
     if idx == n_samples:
         idx = n_samples - 1
+
+    if maximum is not None:
+        if idx > maximum:
+            idx = maximum
+
     return idx
 
 
@@ -45,6 +50,25 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.00
     bias_adj = series - bias
     return bias_adj
 
+def get_neutral_bias_at_index(series: pd.Series, index, fractional_basis: float = 0.005):
+    """
+    Bias adjust the series data by using the XX % of the data centered on an provided index
+
+    Args:
+        series: pandas series of data with a known bias
+        fractional_basis: Fraction of data to use to estimate the bias on start
+    Returns:
+        bias_adj: bias adjusted data to near zero
+    """
+    n = get_points_from_fraction(len(series), fractional_basis)
+    start = index-n
+    start = start if start > 0 else 0
+    stop = index + n
+    stop = stop if stop < len(series) else len(series)-1
+
+    bias = series.values[start:stop].mean()
+    bias_adj = series - bias
+    return bias_adj
 
 def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, direction='forward'):
     """
@@ -155,23 +179,40 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None):
     return result
 
 
-def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
+def aggregate_by_depth(df, new_depth=None, resolution=None, df_depth_col='depth', agg_method='mean'):
     """
     Aggregate the dataframe by the new depth using whatever method
     provided. Data in the new depth is considered to be the bottom of
     the aggregation e.g. 10, 20 == 0-10, 11-20 etc
     Depth data must be monotonic.
     new_depth data much be coarser than current depth data
+
+    Args:
+        df: Dataframe containing at least depth as a columne
+        new_depth: Optional array of depth positions to aggregate to (useful for arbitrary delineations e.g. hand hardness)
+        resolution: Aggregate to a resolution in centimeter. Optional
+        df_depth_col: Column name for depth
+        agg_method: Method to aggregate
+
+
     """
+    # Determine new depth data
+    if new_depth is None:
+        resolution = -1 * abs(resolution)
+        new_depth = np.arange(resolution, df[df_depth_col].min() + resolution, resolution)
+
+    # Determine datum type
     if new_depth[-1] < 0:
         surface_datum = True
     else:
         surface_datum = False
+
     if df.index.name is not None:
         df = df.reset_index()
     dcol = df_depth_col
     cols = [c for c in df.columns if c not in [dcol, 'time']]
     new = []
+
     # is the user request specific aggregation by column
     agg_col_specific = True if type(agg_method) == dict else False
 
@@ -195,6 +236,7 @@ def aggregate_by_depth(df, new_depth, df_depth_col='depth', agg_method='mean'):
                 ind = ind & (df[dcol] >= d1)
             else:
                 ind = ind & (df[dcol] > d1)
+
         if agg_col_specific:
             for z,c in enumerate(cols):
                 nr = getattr(df[c][ind], agg_method[c])()

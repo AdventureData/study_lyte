@@ -123,13 +123,6 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
     constrained = result.set_index('time')
     #assume_no_upward_motion(result[baro])
     constrained = constrained - constrained.iloc[0]
-
-    # from .plotting import plot_constrained_baro
-    # pos = get_depth_from_acceleration(df).mul(100)
-    # pos = pos.reset_index()
-    # plot_constrained_baro(df, result, const, pos, top, bottom, start, stop,
-    #                       baro=baro, acc_axis=acc_axis)
-
     return constrained
 
 

@@ -109,3 +109,18 @@ def plot_fused_depth(acc_depth, baro_depth, avg, scaled_baro=None, error=None):
 
     ax.legend()
     plt.show()
+
+
+
+def plot_ground_strike(signal, search_start, stop_idx, impact, long_press, ground):
+    events = [('stop', stop_idx)]
+    if long_press is not None:
+        events.append(('long_press', long_press + search_start))
+    if impact is not None:
+        events.append(('impact', impact + search_start))
+    if ground is not None:
+        events.append(('ground', ground))
+    ax = plot_ts(signal, events=events,show=False)
+    ax.legend()
+    plt.show()
+

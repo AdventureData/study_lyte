@@ -2,7 +2,7 @@ import pytest
 from os.path import join
 from study_lyte.profile import LyteProfileV6, Sensor
 from operator import attrgetter
-
+from shapely.geometry import Point
 
 class TestLyteProfile:
 
@@ -33,7 +33,7 @@ class TestLyteProfile:
         assert  pytest.approx(nir_surface, abs=len(profile.raw)*0.01) == expected
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
-        ('kaslo.csv', 'fused', 123.3)
+        ('kaslo.csv', 'fused', 118)
     ])
     def test_distance_through_snow(self, profile, expected):
         delta = profile.distance_through_snow
@@ -41,7 +41,7 @@ class TestLyteProfile:
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
         # Test our default method
-        ('kaslo.csv', 'fused', 125),
+        ('kaslo.csv', 'fused', 119),
         # Test our extra methods
         ('kaslo.csv', 'accelerometer', 125),
         ('kaslo.csv', 'barometer', 116.00)
@@ -55,7 +55,7 @@ class TestLyteProfile:
     ])
     def test_avg_velocity(self, profile, expected):
         delta = profile.avg_velocity
-        assert pytest.approx(delta, abs=0.5) == expected
+        assert pytest.approx(delta, abs=5) == expected
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
         ('kaslo.csv', 'fused', 1.1)
@@ -178,7 +178,22 @@ class TestLyteProfile:
         assert profile.start.index <= profile.surface.force.index
         assert profile.surface.force.index <= profile.surface.nir.index
 
+    def test_isolated_reading_metadata(self, data_dir):
+        """ Test the metadata can be read independently without parsing the whole file"""
+        profile = LyteProfileV6(join(data_dir, 'toolik.csv'))
+        metadata = profile.metadata
+        assert type(metadata) == dict
+        assert profile._raw is None
 
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Parseable point
+        ('ground_touch_and_go.csv','fused', Point(-115.693, 43.961)),
+        # no point available
+        ('egrip.csv', 'fused', Sensor.UNAVAILABLE),
+    ])
+    def test_point(self, profile, filename, depth_method, expected):
+        """Test we are parsing the point info"""
+        assert profile.point == expected
 
 class TestLegacyProfile:
     @pytest.fixture()

@@ -1,4 +1,5 @@
-from study_lyte.detect import get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start
+from study_lyte.detect import (get_signal_event, get_acceleration_start, get_acceleration_stop, get_nir_surface,
+                               get_nir_stop, get_sensor_start, find_nearest_value_index, get_ground_strike)
 from study_lyte.io import read_csv
 from study_lyte.adjustments import remove_ambient, get_neutral_bias_at_border
 import pytest
@@ -11,6 +12,20 @@ from os.path import join
 def messy_acc(data_dir):
     df, meta = read_csv(join(data_dir, 'messy_acceleration.csv'))
     return df
+
+@pytest.mark.parametrize('value, arr, expected', [
+    # Test simple usage
+    (10, [0,11,5,4], 1),
+    # Tes no real matches found
+    (10, [0, 0, 0, 0], 0),
+    # Test perfect split picks the lesser of the 2.
+    (10, [1, 11.5, 10.5, 0], 2)
+
+])
+def test_find_nearest_value_index(value, arr, expected):
+    series = pd.Series(arr)
+    idx = find_nearest_value_index(value, series)
+    assert idx == expected
 
 
 @pytest.mark.parametrize("data, threshold, direction, max_threshold, n_points, expected", [
@@ -71,7 +86,7 @@ def test_get_acceleration_start_messy(raw_df, start_idx):
 
 @pytest.mark.parametrize("data,  fractional_basis, threshold, expected", [
     # Test typical use
-    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.0 -1.0, -1.0], 1 / 9, 0.01, 7),
+    ([-1.0, 1.0, -2, -1.2, -1.1, -0.9, -1.0 -1.0, -1.0], 1 / 9, 0.01, 5),
     # Test no detection returns the last index
     ([-1, -1, -1], 1 / 3, 10, 2),
 
@@ -97,6 +112,7 @@ def test_get_acceleration_stop(data, fractional_basis, threshold, expected):
     ('toolik.csv', 'Y-Axis', 17610),
     ('egrip.csv','Y-Axis', 14378),
     ('pilots_error.csv', 'Y-Axis', 12843),
+    ('mores_20230119.csv', 'Y-Axis', 18600)
 
 ])
 def test_get_acceleration_stop_real(raw_df, column, stop_idx):
@@ -184,3 +200,16 @@ def test_get_nir_stop_real(raw_df, fname, surface_idx):
 def test_sensor_start(raw_df, fname, column, expected_first_change):
     first_change = get_sensor_start(raw_df[column])
     assert pytest.approx(first_change, abs=int(0.02 * len(raw_df.index))) == expected_first_change
+
+@pytest.mark.parametrize('fname, expected_ground_strike', [
+    ('pilots_error.csv', 12031),
+    ('toolik.csv', 17922),
+    ("ground_touch_and_go.csv", 15389),
+    ('egrip_tough_surface.csv', None),
+    ('pilots.csv', None),
+])
+def test_get_ground_strike(raw_df, expected_ground_strike):
+    backward_accel = get_neutral_bias_at_border(raw_df['Y-Axis'], direction='backward')
+    stop = get_acceleration_stop(backward_accel)
+    idx = get_ground_strike(raw_df['Sensor1'], stop)
+    assert pytest.approx(idx, abs=int(0.02 * len(raw_df.index))) == expected_ground_strike

@@ -1,9 +1,16 @@
 import numpy as np
 from scipy.signal import find_peaks, argrelextrema
 
-from .adjustments import get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction
+from .adjustments import (get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction, get_neutral_bias_at_index,zfilter)
 from .decorators import directional
 
+def find_nearest_value_index(search_value, series):
+    """
+    Given an array and a value, this function finds the index of the
+    value closest to the search value
+    """
+    idx = np.abs(search_value - series).argmin()
+    return idx
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """
@@ -95,14 +102,16 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
 
     # If no results are found, return the first index the series
     if len(ind) == 0:
-        event_idx = 0
+        event_idx = None
     else:
         # Return the first value matching the conditions
         event_idx = ind[-1]
 
     # Invert the index
-    if 'backward' in search_direction:
+    if 'backward' in search_direction and event_idx is not None:
         event_idx = len(arr) - 1 - event_idx
+        # if event_idx == 0:
+        #     event_idx = None
 
     return event_idx
 
@@ -126,10 +135,12 @@ def get_acceleration_start(acceleration, threshold=-0.01, max_threshold=0.02):
     acceleration_start = get_signal_event(accel_neutral[0:max_ind+1], threshold=threshold, max_threshold=max_threshold,
                                           n_points=n_points,
                                           search_direction='forward')
+    if acceleration_start is None:
+        acceleration_start = 0
     return acceleration_start
 
 
-def get_acceleration_stop(acceleration, threshold=-0.05, max_threshold=0.05):
+def get_acceleration_stop(acceleration, threshold=-0.2, max_threshold=0.1):
     """
     Returns the index of the last value that has a relative change greater than the
     threshold of absolute normalized signal
@@ -141,9 +152,6 @@ def get_acceleration_stop(acceleration, threshold=-0.05, max_threshold=0.05):
         acceleration_start: Integer of index in array of the first value meeting the criteria
     """
     acceleration = acceleration.values
-    n = get_points_from_fraction(len(acceleration), 0.005)
-    if n > 40:
-        n = 20
 
     min_idx = np.argwhere(acceleration == acceleration.min())[0][0]
     max_idx = np.argwhere(acceleration == acceleration.max())[0][0]
@@ -156,11 +164,16 @@ def get_acceleration_stop(acceleration, threshold=-0.05, max_threshold=0.05):
         # Use the farthest deceleration
         search_start = min_idx
 
+    n = get_points_from_fraction(len(acceleration[search_start:]), 0.05, maximum=1000)
     acceleration_stop = get_signal_event(acceleration[search_start:], threshold=threshold,
                                          max_threshold=max_threshold,
                                          n_points=n,
                                          search_direction='backward')
-    acceleration_stop = acceleration_stop + search_start
+
+    if acceleration_stop is None:
+        acceleration_stop = len(acceleration) - 1
+    else:
+        acceleration_stop = acceleration_stop + search_start
     return acceleration_stop
 
 
@@ -209,7 +222,8 @@ def get_nir_stop(active, fractional_basis=0.05, max_threshold=0.008, threshold=-
     n_points = get_points_from_fraction(len(data), fractional_basis)
     stop = get_signal_event(data, search_direction='backward', threshold=threshold,
                             max_threshold=max_threshold, n_points=n_points)
-    stop += ind
+    if stop is not None:
+        stop += ind
 
     return stop
 
@@ -218,10 +232,41 @@ def get_sensor_start(signal, fractional_basis=0.05, max_threshold=0.05, threshol
     """
     Before entering the snow we don't see much dynamic signal. This detects the first change in the signal
     """
-    ind = np.where(signal == signal.max())[0][0]
+    ind = np.where(signal == signal.min())[0][0]
     n_points = get_points_from_fraction(len(signal), 0.01)
     data = signal[:ind]
     norm_signal = get_normalized_at_border(data, fractional_basis=fractional_basis, direction='forward') - 1
     first_change = get_signal_event(norm_signal, search_direction='forward', threshold=threshold,
                             max_threshold=max_threshold, n_points=n_points)
     return first_change
+
+
+def get_ground_strike(signal, stop_idx):
+    """
+    The probe hits ground somtimes before we detect stop.
+    """
+    buffer = get_points_from_fraction(len(signal), 0.05)
+    start = stop_idx - buffer
+    start = start if start > 0 else 0
+    end = stop_idx + buffer
+    end = end if end < len(signal) else len(signal)-1
+    rel_stop = stop_idx - start
+
+    sig_arr = signal[start:end]
+    norm1 = get_neutral_bias_at_index(sig_arr, rel_stop + buffer)
+
+    # norm1 = get_neutral_bias_at_border(signal[start:end], 0.1, 'backward')
+    diff = zfilter(norm1.diff(), 0.001)    # Large change in signal
+    impact = get_signal_event(diff, threshold=-1000, max_threshold=-70, n_points=1, search_direction='forward')
+
+    # Large chunk of data that's the same near the stop
+    n_points = get_points_from_fraction(len(norm1), 0.1)
+    long_press = get_signal_event(norm1, threshold=-150, max_threshold=150, n_points=n_points, search_direction='backward')
+    tol = get_points_from_fraction(len(norm1), 0.2)
+
+    ground = None
+    if impact is not None and long_press is not None:
+        if (long_press-tol) <= impact <= (long_press+tol):
+            ground = impact + start
+
+    return ground

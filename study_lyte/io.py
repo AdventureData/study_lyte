@@ -2,19 +2,9 @@ from typing import Tuple
 import pandas as pd
 import numpy as np
 
+def find_metadata(f:str) -> [int, dict]:
+    """Read just the metadata from the probe files"""
 
-def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
-    """
-    Reads any Lyte probe CSV and returns a dataframe
-    and metadata dictionary from the header
-
-    Args:
-        f: Path to csv, or file buffer
-    Returns:
-        tuple:
-            **df**: pandas Dataframe
-            **header**: dictionary containing header info
-    """
     # Collect the header
     metadata = {}
 
@@ -32,17 +22,35 @@ def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
             else:
                 header_position = i
                 break
+    return header_position, metadata
 
-        df = pd.read_csv(f, header=header_position)
-        # Drop any columns written with the plain index
-        df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
+def read_data(f:str, metadata:dict, header_position:int) -> Tuple[pd.DataFrame, dict]:
+    """Read just the csv to enable parsing metadata and header position separately"""
+    df = pd.read_csv(f, header=header_position)
+    # Drop any columns written with the plain index
+    df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
 
-        if 'time' not in df and 'SAMPLE RATE' in metadata:
-            sr = int(metadata['SAMPLE RATE'])
-            n = len(df)
-            df['time'] = np.linspace(0, n/sr, n)
+    if 'time' not in df and 'SAMPLE RATE' in metadata:
+        sr = int(metadata['SAMPLE RATE'])
+        n = len(df)
+        df['time'] = np.linspace(0, n/sr, n)
+    return df, metadata
 
-        return df, metadata
+def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
+    """
+    Reads any Lyte probe CSV and returns a dataframe
+    and metadata dictionary from the header
+
+    Args:
+        f: Path to csv, or file buffer
+    Returns:
+        tuple:
+            **df**: pandas Dataframe
+            **header**: dictionary containing header info
+    """
+    header_position, metadata = find_metadata(f)
+    df, metadata = read_data(f, metadata, header_position)
+    return df, metadata
 
 
 def write_csv(df: pd.DataFrame, meta: dict, f: str) -> None:

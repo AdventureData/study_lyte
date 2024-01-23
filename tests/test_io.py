@@ -24,7 +24,7 @@ def test_read_csv_columns(data_dir, f, expected_columns):
                     "HARDWARE REVISION": '1',
                     "MODEL NUMBER": "3",
                     "SAMPLE RATE": "16000"}),
-    ('rad_app.csv', {"LOCATION": "43.566052, -116.12157452",
+    ('rad_app.csv', {"LOCATION": "43.566, -116.121",
                      "APP REVISION": "1.17.1",
                      "MODEL_NUMBER": "PB2",
                      "PROCESSING ALGORITHM": "2"})

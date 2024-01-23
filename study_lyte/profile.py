@@ -4,10 +4,11 @@ import pandas as pd
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
+from shapely.geometry import Point
 
-from . io import read_csv
+from . io import read_data, find_metadata
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
-from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start
+from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
 from .depth import AccelerometerDepth, BarometerDepth
 from .logging import setup_log
 import logging
@@ -24,7 +25,6 @@ class Event:
 class Sensor(Enum):
     """Enum for various scenarios that come up with variations of data"""
     UNAVAILABLE = -1
-
 
 
 class LyteProfileV6:
@@ -49,6 +49,8 @@ class LyteProfileV6:
             self._meta = None
             self._accelerometer = None
             self._barometer = None
+            self._point = None
+            self.header_position = None
 
             self._depth = None # Final depth series used for analysis
             self._acceleration = None # No gravity acceleration
@@ -72,6 +74,7 @@ class LyteProfileV6:
             self._stop = None
             self._surface = None
             self._error = None
+            self._ground = None
 
         @staticmethod
         def process_df(df):
@@ -103,7 +106,8 @@ class LyteProfileV6:
             Pandas dataframe hold the data exactly as it read in.
             """
             if self._raw is None:
-                self._raw, self._meta = read_csv(str(self.filename))
+                metadata = self.metadata
+                self._raw, self._meta = read_data(str(self.filename), metadata, self.header_position)
                 self._raw = self.process_df(self.raw)
 
             return self._raw
@@ -113,22 +117,21 @@ class LyteProfileV6:
             """
             Returns a dictionary of all data held in the header portion of the csv
             """
-            if self._raw is None:
-                self._raw, self._meta = read_csv(str(self.filename))
-                self._raw = self.process_df(self.raw)
+            if self._meta is None:
+                self.header_position, self._meta = find_metadata(str(self.filename))
 
-            # Manage misc naming of the acceleration range
-            if 'ACC. Range' not in self._meta.keys():
-                if "ACCRANGE" in self._meta.keys():
-                    self._meta['ACC. Range'] = float(self._meta['ACCRANGE'])
+                # Manage misc naming of the acceleration range
+                if 'ACC. Range' not in self._meta.keys():
+                    if "ACCRANGE" in self._meta.keys():
+                        self._meta['ACC. Range'] = float(self._meta['ACCRANGE'])
+                    else:
+                        self._meta['ACC. Range'] = 2
+
                 else:
-                    self._meta['ACC. Range'] = 2
+                    self._meta['ACC. Range'] = float(self._meta['ACC. Range'])
 
-            else:
-                self._meta['ACC. Range'] = float(self._meta['ACC. Range'])
-
-            if 'ZPFO' in self._meta.keys():
-                self._meta['ZPFO'] = int(self._meta['ZPFO'])
+                if 'ZPFO' in self._meta.keys():
+                    self._meta['ZPFO'] = int(self._meta['ZPFO'])
 
             return self._meta
 
@@ -167,8 +170,10 @@ class LyteProfileV6:
             Retrieve the Active NIR sensor with ambient NIR removed
             """
             if self._nir is None:
-                self._nir = pd.DataFrame({'nir': self.raw['nir'].values, 'depth': self.depth.values})
-                self._nir = self._nir.iloc[self.surface.nir.index:self.stop.index].reset_index()
+                self._nir = self.raw[["Sensor2","Sensor3", "nir"]]
+                self._nir['depth'] = self.depth.values
+                end = self.stop.index if self.ground.index is None else self.ground.index
+                self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
                 self._nir = self._nir.drop(columns='index')
                 self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
             return self._nir
@@ -186,7 +191,9 @@ class LyteProfileV6:
                     force = self.raw['Sensor1'].values
 
                 self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
-                self._force = self._force.iloc[self.surface.force.index:self.stop.index].reset_index()
+                # prefer a ground index if available
+                end = self.stop.index if self.ground.index is None else self.ground.index
+                self._force = self._force.iloc[self.surface.force.index:end].reset_index()
                 self._force = self._force.drop(columns='index')
                 if not self._force.empty:
                     self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
@@ -232,9 +239,6 @@ class LyteProfileV6:
                 else:
                     idx = self.start.index
                 self._barometer = BarometerDepth(baro, idx, self.stop.index)
-            # from .plotting import plot_ts
-            # ax = plot_ts(self.accelerometer.depth.values, events=[('start', idx)], show=False)
-            # plot_ts(self._barometer.depth.values, events=[('start', idx)], ax=ax)
 
             return self._barometer
 
@@ -287,7 +291,11 @@ class LyteProfileV6:
                     idx = get_acceleration_stop(backward_accel)
                 else:
                     idx = get_nir_stop(self.raw['Sensor3'])
-                self._stop = Event(name='stop', index=idx, depth=None, time=self.raw['time'].iloc[idx])
+                if idx is not None:
+                    self._stop = Event(name='stop', index=idx, depth=None, time=self.raw['time'].iloc[idx])
+                else:
+                    self._stop = Event(name='stop', index=0, depth=None, time=self.raw['time'].iloc[0])
+
             return self._stop
 
         @property
@@ -307,15 +315,17 @@ class LyteProfileV6:
                 force_surface_depth = depth + self.surface_detection_offset
                 f_idx = abs(self.depth - force_surface_depth).argmin()
                 # Retrieve force estimated start
-                f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.3, threshold=-0.3)
+                f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
+                f_start = f_start or f_idx
+
                 # If the force start is before the NIR start then adjust
                 if f_start < self.start.index:
-                    LOG.info('Choosing motion start over force start...')
+                    LOG.info(f'Choosing motion start ({self.start.index}) over force start ({f_start})...')
                     f_idx = self.start.index
                     force_surface_depth = self.depth.iloc[f_idx]
 
                 elif f_start < f_idx:
-                    LOG.info('Choosing force start point over nir...')
+                    LOG.info(f'Choosing force start ({f_start}) over nir derived ({f_idx})...')
                     f_idx = f_start
                     force_surface_depth = self.depth.iloc[f_idx]
 
@@ -328,6 +338,17 @@ class LyteProfileV6:
                     self._start.name = 'start'
 
             return self._surface
+        @property
+        def ground(self):
+            """Event for ground detection"""
+            if self._ground is None:
+                ground = get_ground_strike(self.raw['Sensor1'], self.stop.index)
+                if ground is not None:
+                    self._ground = Event(name='ground', index=ground, depth=self.depth.iloc[ground], time=self.raw['time'].iloc[ground])
+                else:
+                    self._ground = Event(name='ground', index=None, depth=None, time=None)
+
+            return self._ground
 
         @property
         def error(self):
@@ -394,7 +415,7 @@ class LyteProfileV6:
             """
             Return all the common events recorded
             """
-            return [self.start, self.stop, self.surface.nir, self.surface.force, self.error]
+            return [self.start, self.stop, self.surface.nir, self.surface.force, self.ground, self.error]
 
         @staticmethod
         def get_motion_name(columns):
@@ -419,6 +440,16 @@ class LyteProfileV6:
                 return candidates
             else:
                 return Sensor.UNAVAILABLE
+        @property
+        def point(self):
+            """Return shapely geometry point of the measurement location in EPSG 4326"""
+            if self._point is None:
+                if all([k in self.metadata.keys() for k in ['Latitude', 'Longitude']]):
+                    self._point = Point(float(self.metadata['Longitude']), float(self.metadata['Latitude']))
+                else:
+                    self._point = Sensor.UNAVAILABLE
+
+            return self._point
 
         def report_card(self):
             """
@@ -436,8 +467,9 @@ class LyteProfileV6:
             profile_string += msg.format('Resolution', f'{self.resolution:0.1f} pts/cm')
             profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
             profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
-            profile_string += msg.format('Error Detected:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
-            profile_string += msg.format('Upward Motion?:', "True" if self.has_upward_motion else "False")
+            profile_string += msg.format('Ground Strike:', 'True' if self.ground.time is not None else 'False')
+            profile_string += msg.format('Upward Motion:', "True" if self.has_upward_motion else "False")
+            profile_string += msg.format('Errors:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
 
             profile_string += '-' * (len(header)-2) + '\n'
             return profile_string
@@ -470,12 +502,13 @@ class LyteProfileV6:
             # The deeper we go the more the baro constrains
             baro_bottom = baro_depth.min()
             acc_bottom = acc_depth.min()
-            scale = abs(acc_bottom / 100)
             avg_bottom = avg.min()
 
             # Scale total
-            delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
-            avg = (avg / avg_bottom) * delta
+            sensor_diff = abs(acc_bottom) - abs(baro_bottom)
+            delta = 0.572 * abs(acc_bottom) + 0.308 * abs(baro_bottom) + 0.264 * sensor_diff + 8.916
+            # delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
+            avg = (avg / avg_bottom) * -1*delta
             return avg
 
 
