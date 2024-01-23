@@ -47,3 +47,13 @@ Initial Development (2022-01-29)
 * Added API to read the docs
 * Added in pressure profile
 * Improved surface detection
+
+0.7.0 (2024-01-22)
+--------------------------------
+
+* Added linear regressions tools
+* Added ground detection
+* Added better error handling
+* Improved detection methods to be performant
+* Enabled metadata read separately from main data
+* Added resolution to aggregate by depth
