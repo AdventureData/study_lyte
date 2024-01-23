@@ -25,7 +25,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
-
+        'Programming Language :: Python :: 3.10',
     ],
     description="Package for doing analysis with Lyte Probe data",
     install_requires=requirements,
@@ -34,7 +34,7 @@ setup(
     include_package_data=True,
     keywords='study_lyte',
     name='study_lyte',
-    packages=find_packages(include=['study_lyte', 'study_lyte.*']),
+    packages=find_packages(include=['study_lyte', 'study_lyte.*'], exclude=['tests*']),
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/AdventureData/study_lyte',
