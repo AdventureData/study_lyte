@@ -144,6 +144,8 @@ def test_get_acceleration_stop_time_index(raw_df):
     ([0, 200, 3000, 4000], 0.01, 0.1, 1),
     # no ambient change ( dark or super cloudy)
    ([1000, 1100, 2000, 3000], .01, 0.2,  1),
+    # No surface detectable but all the values meet criteria
+    ([1000,1010,9990,1010],-0.01,0.2,0)
 ])
 def test_get_nir_surface(active, threshold, max_threshold, expected):
     idx = get_nir_surface(pd.Series(active),
@@ -202,9 +204,12 @@ def test_sensor_start(raw_df, fname, column, expected_first_change):
     assert pytest.approx(first_change, abs=int(0.02 * len(raw_df.index))) == expected_first_change
 
 @pytest.mark.parametrize('fname, expected_ground_strike', [
+    # Ground strikes
     ('pilots_error.csv', 12031),
     ('toolik.csv', 17922),
+    # Challenging ground strike
     ("ground_touch_and_go.csv", 15389),
+    # No ground strikes
     ('egrip_tough_surface.csv', None),
     ('pilots.csv', None),
 ])

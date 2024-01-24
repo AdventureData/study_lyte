@@ -113,6 +113,7 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
         # if event_idx == 0:
         #     event_idx = None
 
+
     return event_idx
 
 
@@ -201,6 +202,10 @@ def get_nir_surface(clean_active, threshold=-1, max_threshold=0.25):
     # Detect likely candidate normal ambient conditions
     surface = get_signal_event(neutral, search_direction='forward', threshold=threshold,
                                max_threshold=max_threshold, n_points=n)
+    # No surface found and all values met criteria
+    if surface == len(neutral)-1:
+        surface = 0
+
     return surface
 
 

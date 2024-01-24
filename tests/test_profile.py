@@ -219,3 +219,12 @@ class TestLegacyProfile:
 def test_force_start_alternate(lyte_profile, fname, attribute, expected_value):
     result =  attrgetter(attribute)(lyte_profile)
     assert pytest.approx(result, int(0.01 * len(lyte_profile.raw))) == expected_value
+
+@pytest.mark.parametrize("fname, expected", [("open_air.csv", 0)])
+def test_surface_indexer_error(lyte_profile, fname, expected):
+    """
+    Most people take a measure in the air to test which fails to find a surface.
+    Test to make sure this is handled.
+    """
+    assert lyte_profile.surface.nir.index == expected
+    assert not lyte_profile.nir.empty
