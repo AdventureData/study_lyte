@@ -170,12 +170,14 @@ class LyteProfileV6:
             Retrieve the Active NIR sensor with ambient NIR removed
             """
             if self._nir is None:
-                self._nir = self.raw[["Sensor2","Sensor3", "nir"]]
+                self._nir = self.raw[["Sensor2", "Sensor3", "nir"]]
                 self._nir['depth'] = self.depth.values
                 end = self.stop.index if self.ground.index is None else self.ground.index
+
                 self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
                 self._nir = self._nir.drop(columns='index')
                 self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
+
             return self._nir
 
         @property
@@ -306,7 +308,8 @@ class LyteProfileV6:
             if self._surface is None:
                 # Call to populate nir in raw
                 idx = get_nir_surface(self.raw['nir'])
-
+                if idx == 0:
+                    LOG.warning("Unable to find snow surface, defaulting to first data point")
                 # Event according the NIR sensors
                 depth = self.depth.iloc[idx]
                 nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
