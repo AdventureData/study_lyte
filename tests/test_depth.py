@@ -176,3 +176,9 @@ class TestBarometerDepthTimeseries:
 
     def test_max_velocity(self, depth):
         assert pytest.approx(depth.max_velocity, abs=1e-2) == 283.74
+
+    def test_invalid_start_stop_index(self):
+        """ Test when the baro depth receives a start that is not less than stop. Return zeros."""
+        series = pd.Series(index=[0,1,2,3], data=[0.1,0.0,-0.1,-0.2])
+        depth = BarometerDepth(series, 2, 2)
+        assert np.all(depth.depth.values==0)

@@ -25,7 +25,7 @@ class Event:
 class Sensor(Enum):
     """Enum for various scenarios that come up with variations of data"""
     UNAVAILABLE = -1
-
+    UNINTERPRETABLE = -2
 
 class LyteProfileV6:
         def __init__(self, filename, surface_detection_offset=4.5, calibration=None, depth_method='fused', tip_diameter_mm=5):
@@ -240,6 +240,7 @@ class LyteProfileV6:
                     idx = abs(self.accelerometer.depth - -1).argmin()
                 else:
                     idx = self.start.index
+
                 self._barometer = BarometerDepth(baro, idx, self.stop.index)
 
             return self._barometer
