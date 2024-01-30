@@ -243,8 +243,11 @@ class BarometerDepth(DepthTimeseries):
     @property
     def depth(self):
         if self._depth is None:
-            self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
-            self._depth = self._depth.reindex(self.raw.index, method='nearest')
+            if self.stop_idx > self.start_idx:
+                self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
+                self._depth = self._depth.reindex(self.raw.index, method='nearest')
+            else:
+                self._depth = pd.Series(index=self.raw.index, data=np.zeros_like(self.raw.values))
         return self._depth
 
 
