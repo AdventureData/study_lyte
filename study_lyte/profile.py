@@ -173,11 +173,12 @@ class LyteProfileV6:
                 self._nir = self.raw[["Sensor2", "Sensor3", "nir"]]
                 self._nir['depth'] = self.depth.values
                 end = self.stop.index if self.ground.index is None else self.ground.index
-
-                self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
-                self._nir = self._nir.drop(columns='index')
-                self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
-
+                if self.surface.nir.index < end:
+                    self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
+                    self._nir = self._nir.drop(columns='index')
+                    self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
+                else:
+                    self._nir = Sensor.UNINTERPRETABLE
             return self._nir
 
         @property
@@ -410,8 +411,11 @@ class LyteProfileV6:
         @property
         def resolution(self):
             if self._resolution is None:
-                n_points = len(self.nir)
-                self._resolution = n_points / self.distance_through_snow
+                if type(self.nir) == pd.DataFrame:
+                    n_points = len(self.nir)
+                    self._resolution = n_points / self.distance_through_snow
+                else:
+                    self._resolution = np.nan
             return self._resolution
 
         @property
