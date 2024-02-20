@@ -68,6 +68,7 @@ class LyteProfileV6:
             self._resolution = None # Vertical resolution of the profile in the snow
             self._datetime = None
             self._has_upward_motion = None # Flag for datasets containing upward motion
+            self._angle = None
 
             # Events
             self._start = None
@@ -242,7 +243,8 @@ class LyteProfileV6:
                 else:
                     idx = self.start.index
 
-                self._barometer = BarometerDepth(baro, idx, self.stop.index)
+                angle = None if self.angle == Sensor.UNAVAILABLE else self.angle
+                self._barometer = BarometerDepth(baro, idx, self.stop.index, angle=angle)
 
             return self._barometer
 
@@ -539,6 +541,21 @@ class LyteProfileV6:
                         break
 
             return self._has_upward_motion
+
+        @property
+        def angle(self):
+            """
+            float indicating the angle at the start of a measuruement
+            """
+            if self._angle is None and self.acceleration_names != Sensor.UNAVAILABLE:
+                if 'Y-Axis' in self.acceleration_names:
+                    data = self.raw[self.acceleration_names].iloc[0:self.start.index].mean(axis=0)
+                    magn = data.pow(2).sum()**0.5
+                    self._angle = np.arccos(abs(data['Y-Axis']) / magn) * 180 / np.pi
+                else:
+                    self._angle = Sensor.UNAVAILABLE
+
+            return self._angle
 
         @classmethod
         def get_error(cls, acc, acc_range, threshold=0.95):
