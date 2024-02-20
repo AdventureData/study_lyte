@@ -240,12 +240,19 @@ class DepthTimeseries:
 
 
 class BarometerDepth(DepthTimeseries):
+    def __init__(self, *args, angle=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.angle = angle
     @property
     def depth(self):
         if self._depth is None:
             if self.stop_idx > self.start_idx:
                 self._depth = get_constrained_baro_depth(self.raw, self.start_idx, self.stop_idx, method='nanmean')['baro']
                 self._depth = self._depth.reindex(self.raw.index, method='nearest')
+                # Adjust for an angle
+                if self.angle is not None:
+                    self._depth = self._depth / np.cos(np.pi * self.angle / 180)
+
             else:
                 self._depth = pd.Series(index=self.raw.index, data=np.zeros_like(self.raw.values))
         return self._depth
