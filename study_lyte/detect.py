@@ -258,20 +258,31 @@ def get_ground_strike(signal, stop_idx):
     rel_stop = stop_idx - start
 
     sig_arr = signal[start:end]
-    norm1 = get_neutral_bias_at_index(sig_arr, rel_stop + buffer)
+    window = get_points_from_fraction(len(sig_arr), 0.01)
+    diff = sig_arr.rolling(window=window).std().values
+    diff = get_neutral_bias_at_border(diff, direction='backward')
 
-    # norm1 = get_neutral_bias_at_border(signal[start:end], 0.1, 'backward')
-    diff = zfilter(norm1.diff(), 0.001)    # Large change in signal
-    impact = get_signal_event(diff, threshold=-1000, max_threshold=-70, n_points=1, search_direction='forward')
+    # Large change in signal
+    impact = get_signal_event(diff, threshold=150, max_threshold=1000, n_points=1, search_direction='forward')
 
     # Large chunk of data that's the same near the stop
+    norm1 = get_neutral_bias_at_index(sig_arr, rel_stop+buffer).values
     n_points = get_points_from_fraction(len(norm1), 0.1)
-    long_press = get_signal_event(norm1, threshold=-150, max_threshold=150, n_points=n_points, search_direction='backward')
-    tol = get_points_from_fraction(len(norm1), 0.2)
+    long_press = get_signal_event(norm1, threshold=-1000, max_threshold=150, n_points=n_points, search_direction='backward')
+    tol = get_points_from_fraction(len(norm1), 0.1)
+    from .plotting import  plot_ground_strike, plot_ts
 
     ground = None
-    if impact is not None and long_press is not None:
+    if impact is not None:
+        impact += start
+    if long_press is not None:
+        long_press += start
+
+    if long_press is not None and impact is not None:
         if (long_press-tol) <= impact <= (long_press+tol):
-            ground = impact + start
+            ground = impact
+    # plot_ground_strike(signal, start, stop_idx, impact, long_press, ground)
+
+    # plot_ground_strike(signal, diff, norm1, start, stop_idx, impact, long_press,ground)
 
     return ground

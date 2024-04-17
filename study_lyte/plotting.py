@@ -112,15 +112,33 @@ def plot_fused_depth(acc_depth, baro_depth, avg, scaled_baro=None, error=None):
 
 
 
-def plot_ground_strike(signal, search_start, stop_idx, impact, long_press, ground):
+def plot_ground_strike(signal, impact_series, long_press_series, search_start, stop_idx, impact, long_press, ground):
     events = [('stop', stop_idx)]
+    impact_events = [('stop', stop_idx - search_start)]
+
     if long_press is not None:
-        events.append(('long_press', long_press + search_start))
+        events.append(('long_press', long_press))
+        impact_events.append(('long_press', long_press-search_start))
+
     if impact is not None:
-        events.append(('impact', impact + search_start))
+        events.append(('impact', impact))
+        impact_events.append(('impact', impact-search_start))
+
     if ground is not None:
         events.append(('ground', ground))
-    ax = plot_ts(signal, events=events,show=False)
-    ax.legend()
+
+    fig, (ax1, ax2, ax3) = plt.subplots(3,1)
+    ax1 = plot_ts(signal, events=events,show=False, ax=ax1)
+    ax1.set_title('Full series and events')
+    ax1.legend()
+
+    plot_ts(impact_series, events=impact_events, ax=ax2, show=False)
+    ax2.set_title('impact')
+    ax2.legend()
+
+    plot_ts(long_press_series, events=impact_events, ax=ax3, show=False)
+    ax3.set_title('Long Press')
+    ax3.legend()
+    plt.tight_layout()
     plt.show()
 

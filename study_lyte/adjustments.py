@@ -46,7 +46,8 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.00
     Returns:
         bias_adj: bias adjusted data to near zero
     """
-    bias = get_directional_mean(series.values, fractional_basis=fractional_basis, direction=direction)
+    arr = series.values if hasattr(series,'values') else series
+    bias = get_directional_mean(arr, fractional_basis=fractional_basis, direction=direction)
     bias_adj = series - bias
     return bias_adj
 
@@ -175,7 +176,6 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None):
         result[result > maximum] = maximum
     if minimum is not None:
         result[result < minimum] = minimum
-
     return result
 
 

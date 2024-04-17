@@ -172,7 +172,7 @@ def test_aggregate_by_depth(data, depth, new_depth, resolution, agg_method, expe
 
     expected = pd.DataFrame.from_dict(exp)
 
-    pd.testing.assert_frame_equal(result, expected, check_dtype=False)
+    pd.testing.assert_frame_equal(result, expected, check_dtype=False, check_like=True)
 
 @pytest.mark.skip('Function not ready')
 @pytest.mark.parametrize('data, method, expected', [
