@@ -250,7 +250,7 @@ def get_ground_strike(signal, stop_idx):
     """
     The probe hits ground somtimes before we detect stop.
     """
-    buffer = get_points_from_fraction(len(signal), 0.05)
+    buffer = get_points_from_fraction(len(signal), 0.1)
     start = stop_idx - buffer
     start = start if start > 0 else 0
     end = stop_idx + buffer
@@ -268,7 +268,7 @@ def get_ground_strike(signal, stop_idx):
     # Large chunk of data that's the same near the stop
     norm1 = get_neutral_bias_at_index(sig_arr, rel_stop+buffer).values
     n_points = get_points_from_fraction(len(norm1), 0.1)
-    long_press = get_signal_event(norm1, threshold=-1000, max_threshold=150, n_points=n_points, search_direction='backward')
+    long_press = get_signal_event(norm1, threshold=-10000, max_threshold=150, n_points=n_points, search_direction='backward')
     tol = get_points_from_fraction(len(norm1), 0.1)
     from .plotting import  plot_ground_strike, plot_ts
 
@@ -281,7 +281,6 @@ def get_ground_strike(signal, stop_idx):
     if long_press is not None and impact is not None:
         if (long_press-tol) <= impact <= (long_press+tol):
             ground = impact
-    # plot_ground_strike(signal, start, stop_idx, impact, long_press, ground)
 
     # plot_ground_strike(signal, diff, norm1, start, stop_idx, impact, long_press,ground)
 
