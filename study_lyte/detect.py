@@ -250,7 +250,7 @@ def get_ground_strike(signal, stop_idx):
     """
     The probe hits ground somtimes before we detect stop.
     """
-    buffer = get_points_from_fraction(len(signal), 0.1)
+    buffer = get_points_from_fraction(len(signal), 0.12)
     start = stop_idx - buffer
     start = start if start > 0 else 0
     end = stop_idx + buffer
