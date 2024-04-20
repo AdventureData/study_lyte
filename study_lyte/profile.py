@@ -189,7 +189,7 @@ class LyteProfileV6:
             """
             if self._force is None:
                 if 'Sensor1' in self.calibration.keys():
-                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0)
+                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0, maximum=15000)
                     # force = force - force[0]
                 else:
                     force = self.raw['Sensor1'].values
@@ -257,9 +257,15 @@ class LyteProfileV6:
                         depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
                                                        self.barometer.depth.values.copy(),
                                                        error=self.error.index)
-                        if depth.min() < -230:
+
+                        if depth.min() < -230 and self.accelerometer.depth.min() > -230:
                             LOG.warning('Fused depth result produced a profile > 250 cm. Defaulting to accelerometer')
                             self._depth = self.accelerometer.depth
+
+                        elif depth.min() < -230 and self.barometer.depth.min() > -230:
+                            LOG.warning('Fused and accelerometer depth resulted in a profile > 230 cm. Defaulting to barometer')
+                            self._depth = self.barometer.depth
+
                         else:
                             self._depth = pd.Series(data=depth, index=self.raw['time'])
                     # User requested accelerometer
@@ -311,7 +317,7 @@ class LyteProfileV6:
             """
             if self._surface is None:
                 # Call to populate nir in raw
-                idx = get_nir_surface(self.raw['nir'])
+                idx = get_nir_surface(self.raw['Sensor3'])
                 if idx == 0:
                     LOG.warning("Unable to find snow surface, defaulting to first data point")
                 # Event according the NIR sensors

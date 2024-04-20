@@ -144,24 +144,40 @@ def merge_time_series(df_list):
     return result
 
 
-def remove_ambient(active, ambient, min_ambient_range=50, direction='forward'):
+def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
     """
     Attempts to remove the ambient signal from the active signal
     """
     amb_max = ambient.max()
     amb_min = ambient.min()
     if abs(amb_max - amb_min) > min_ambient_range:
+        # Only adjust up to the drop down
+        tol = 0.05
         n = get_points_from_fraction(len(ambient), 0.01)
         amb = ambient.rolling(window=n, center=True, closed='both', min_periods=1).mean()
+        amb_back = get_directional_mean(amb, direction='backward', fractional_basis=0.1)
+        active_forward = get_directional_mean(active, direction='forward', fractional_basis=0.1)
+
+        ind = amb < (amb_back * (1 + tol))
+        decayed_idx = np.argwhere(ind.values)
+        if decayed_idx.any():
+            decayed_idx = decayed_idx[0][0]
+
         norm_ambient = get_normalized_at_border(amb, direction=direction)
         norm_active = get_normalized_at_border(active, direction=direction)
-        basis = get_directional_mean(active, direction=direction)
-        clean = (norm_active - norm_ambient) * basis
-        if clean.min() < 0 and 'backward' not in direction:
-            clean = clean - clean.min()
+        norm_ambient[decayed_idx:] = 0
+        norm_diff = norm_active - norm_ambient
+        norm_diff[ norm_diff <= 0] = np.nan
+        norm_diff = norm_diff.interpolate(method='cubic')
+        clean = active_forward * norm_diff
+        clean[:int(decayed_idx*(0.5))] = 1
+        # Zero cant work here
+        clean[clean < 1] = 1
 
     else:
         clean = active
+    from .plotting import plot_nir_cleaning
+    plot_nir_cleaning(active,ambient,  norm_active, norm_ambient, norm_diff, clean)
 
     return clean
 

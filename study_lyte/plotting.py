@@ -111,7 +111,6 @@ def plot_fused_depth(acc_depth, baro_depth, avg, scaled_baro=None, error=None):
     plt.show()
 
 
-
 def plot_ground_strike(signal, impact_series, long_press_series, search_start, stop_idx, impact, long_press, ground):
     events = [('stop', stop_idx)]
     impact_events = [('stop', stop_idx - search_start)]
@@ -142,3 +141,25 @@ def plot_ground_strike(signal, impact_series, long_press_series, search_start, s
     plt.tight_layout()
     plt.show()
 
+def plot_nir_cleaning(active, ambient, norm_active, norm_ambient, diff, clean):
+
+    fig,axes = plt.subplots(2,1)
+    # Plot normalized
+    plot_ts(norm_ambient, ax=axes[0], data_label='norm amb.', show=False)
+    plot_ts(norm_active, ax=axes[0], data_label='norm act.', show=False)
+    plot_ts(diff, ax=axes[0], data_label='norm diff', show=False)
+
+    plot_ts(ambient, ax=axes[1], data_label='ambient', show=False)
+    plot_ts(active, ax=axes[1], data_label='active', show=False)
+
+    plot_ts(clean, ax=axes[1], data_label='clean.', show=False)
+    plt.show()
+
+def plot_nir_surface(clean_active, diff, surface):
+    events = []
+    if surface is not None:
+        events.append(('surface', surface))
+
+    fig,axes = plt.subplots(2, 1)
+    plot_ts(clean_active,events=events, ax=axes[0], show=False)
+    plot_ts(diff, events=events, ax=axes[1])

@@ -178,7 +178,7 @@ def get_acceleration_stop(acceleration, threshold=-0.2, max_threshold=0.1):
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=-1, max_threshold=0.25):
+def get_nir_surface(clean_active, threshold=30, max_threshold=None):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 
@@ -190,22 +190,22 @@ def get_nir_surface(clean_active, threshold=-1, max_threshold=0.25):
     Return:
         surface: Integer index of the estimated snow surface
     """
-    n = get_points_from_fraction(len(clean_active), 0.01)
+    # n = get_points_from_fraction(len(clean_active), 0.01)
     # Normalize by data unaffected by ambient
-    clean_norm = clean_active / clean_active[n:].mean()
-    neutral = get_neutral_bias_at_border(clean_norm)
+    neutral = get_neutral_bias_at_border(clean_active)
 
     # Retrieve a likely candidate under challenging ambient conditions
-
-    max_idx = np.argwhere((neutral == neutral.min()).values)[0][0]
+    window = get_points_from_fraction(len(neutral), 0.01)
+    diff = neutral.rolling(window=window).std().values
 
     # Detect likely candidate normal ambient conditions
-    surface = get_signal_event(neutral, search_direction='forward', threshold=threshold,
-                               max_threshold=max_threshold, n_points=n)
+    surface = get_signal_event(diff, search_direction='backward', threshold=threshold,
+                               max_threshold=max_threshold, n_points=1)
     # No surface found and all values met criteria
     if surface == len(neutral)-1:
         surface = 0
-
+    # from .plotting import plot_nir_surface
+    # plot_nir_surface(neutral, diff, surface)
     return surface
 
 
