@@ -69,12 +69,20 @@ class GenericProfileV6:
         self._error = None
         self._ground = None
 
-
     def assign_event_depths(self):
         """" Enable depth assignment post depth realization """
         self.events
         for event in [self._start, self._stop, self._surface.nir, self._surface.force]:
             event.depth = self.depth.iloc[event.index]
+
+    @classmethod
+    def from_metadata(cls, filename, **kwargs):
+        profile = cls(filename)
+        if 'APP VERSION' in profile.metadata.keys():
+            return ProcessedProfileV6(filename)
+        else:
+            return LyteProfileV6(filename)
+
 
     @property
     def raw(self):
