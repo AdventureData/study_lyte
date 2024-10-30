@@ -27,7 +27,7 @@ class Sensor(Enum):
     UNAVAILABLE = -1
     UNINTERPRETABLE = -2
 
-class BaseProfileV6:
+class GenericProfileV6:
     def __init__(self, filename, surface_detection_offset=4.5, calibration=None,
              tip_diameter_mm=5):
         """
@@ -271,7 +271,7 @@ class BaseProfileV6:
         return self._has_upward_motion
 
 
-class LyteProfileV6(BaseProfileV6):
+class LyteProfileV6(GenericProfileV6):
     """
     Class for managing raw profiles pulled from the probe over USB. This class computes the
     depth profile from the raw data
@@ -602,7 +602,7 @@ class LyteProfileV6(BaseProfileV6):
     @property
     def angle(self):
         """
-        float indicating the angle at the start of a measuruement
+        float indicating the angle at the start of a measurement
         """
         if self._angle is None and self.acceleration_names != Sensor.UNAVAILABLE:
             if 'Y-Axis' in self.acceleration_names:
@@ -628,3 +628,47 @@ class LyteProfileV6(BaseProfileV6):
         return profile_str
 
 
+class ProcessedProfileV6(GenericProfileV6):
+    """ Class for managing profiles that have been depth processed already """
+    def __init__(self, filename, **kwargs):
+        super().__init__(filename, **kwargs)
+
+    @staticmethod
+    def process_df(df):
+        """
+        Migrate all baro depths to filtereddepth and remove ambient
+        to add NIR column
+        """
+        df['nir'] = remove_ambient(df['Sensor3'], df['Sensor2'])
+        return df
+
+    @property
+    def depth(self):
+        return self.raw['depth']
+
+    @property
+    def start(self):
+        """ Return start event """
+        if self._start is None:
+            # TODO: PLACEHOLDER
+            idx = 0
+            self._start = Event(name='start', index=idx, depth=self.raw['depth'].iloc[idx], time=None)
+        return self._start
+
+    @property
+    def stop(self):
+        """ Return stop event """
+        if self._stop is None:
+            idx = 0
+            self._stop = Event(name='stop', index=idx, depth=self.raw['depth'].iloc[idx], time=None)
+        return self._stop
+
+    @property
+    def surface(self):
+        """
+        Return surface events for the nir and force which are physically separated by a distance
+        """
+        if self._surface is None:
+            idx = 0
+            self._surface = Event(name='surface', index=idx, depth=self.raw['depth'].iloc[idx], time=None)
+        return self._surface
