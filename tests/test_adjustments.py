@@ -138,6 +138,10 @@ def test_remove_ambient(active, ambient, min_ambient_range, expected):
     result = remove_ambient(active, ambient, min_ambient_range=100)
     np.testing.assert_equal(result.values, expected)
 
+@pytest.mark.parametrize('fname', ['2024-01-31--104419.csv'])
+def test_remove_ambient_real(raw_df, fname):
+    remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
+
 @pytest.mark.parametrize('data, coefficients, expected', [
     ([1, 2, 3, 4], [2, 0], [2, 4, 6, 8])
 ])

@@ -151,7 +151,7 @@ def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
     amb_max = ambient.max()
     amb_min = ambient.min()
     if abs(amb_max - amb_min) > min_ambient_range:
-        # Only adjust up to the drop down
+        # Only adjust up to the dropdown
         tol = 0.05
         n = get_points_from_fraction(len(ambient), 0.01)
         amb = ambient.rolling(window=n, center=True, closed='both', min_periods=1).mean()
@@ -176,9 +176,6 @@ def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
 
     else:
         clean = active
-    from .plotting import plot_nir_cleaning
-    plot_nir_cleaning(active,ambient,  norm_active, norm_ambient, norm_diff, clean)
-
     return clean
 
 
