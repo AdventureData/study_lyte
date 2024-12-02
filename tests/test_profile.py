@@ -253,3 +253,11 @@ def test_surface_indexer_error(lyte_profile, fname, expected):
     """
     assert lyte_profile.surface.nir.index == expected
     assert not lyte_profile.nir.empty
+
+
+def test_app(data_dir):
+    """Functionality test"""
+    fname = data_dir + '/ls_app.csv'
+    profile = ProcessedProfileV6(fname)
+    print(profile)
+    assert False # TODO: Add more detailed checking
