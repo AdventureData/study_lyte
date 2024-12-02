@@ -652,7 +652,7 @@ class ProcessedProfileV6(GenericProfileV6):
 
     @property
     def depth(self):
-        return self.raw['depth']
+        return self.raw['depth']* -1
 
     @property
     def start(self):
@@ -667,7 +667,7 @@ class ProcessedProfileV6(GenericProfileV6):
     def stop(self):
         """ Return stop event """
         if self._stop is None:
-            idx = 0
+            idx = self.raw.index[-1]
             self._stop = Event(name='stop', index=idx, depth=self.raw['depth'].iloc[idx], time=None)
         return self._stop
 
@@ -678,5 +678,8 @@ class ProcessedProfileV6(GenericProfileV6):
         """
         if self._surface is None:
             idx = 0
-            self._surface = Event(name='surface', index=idx, depth=self.raw['depth'].iloc[idx], time=None)
+            force = Event(name='force', index=idx, depth=self.raw['depth'].iloc[0], time=None)
+            nir = Event(name='nir', index=idx, depth=self.raw['depth'].iloc[0], time=None)
+            self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
+
         return self._surface

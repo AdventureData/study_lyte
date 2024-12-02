@@ -202,7 +202,7 @@ def get_nir_surface(clean_active, threshold=30, max_threshold=None):
     surface = get_signal_event(diff, search_direction='backward', threshold=threshold,
                                max_threshold=max_threshold, n_points=1)
     # No surface found and all values met criteria
-    if surface == len(neutral)-1:
+    if surface == len(neutral)-1 or surface is None:
         surface = 0
     # from .plotting import plot_nir_surface
     # plot_nir_surface(neutral, diff, surface)
@@ -270,7 +270,6 @@ def get_ground_strike(signal, stop_idx):
     n_points = get_points_from_fraction(len(norm1), 0.1)
     long_press = get_signal_event(norm1, threshold=-10000, max_threshold=150, n_points=n_points, search_direction='backward')
     tol = get_points_from_fraction(len(norm1), 0.1)
-    from .plotting import  plot_ground_strike, plot_ts
 
     ground = None
     if impact is not None:
@@ -282,6 +281,7 @@ def get_ground_strike(signal, stop_idx):
         if (long_press-tol) <= impact <= (long_press+tol):
             ground = impact
 
+    # from .plotting import  plot_ground_strike, plot_ts
     # plot_ground_strike(signal, diff, norm1, start, stop_idx, impact, long_press,ground)
 
     return ground

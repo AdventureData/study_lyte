@@ -162,12 +162,14 @@ def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
         decayed_idx = np.argwhere(ind.values)
         if decayed_idx.any():
             decayed_idx = decayed_idx[0][0]
+        else:
+            decayed_idx = 0
 
         norm_ambient = get_normalized_at_border(amb, direction=direction)
         norm_active = get_normalized_at_border(active, direction=direction)
         norm_ambient[decayed_idx:] = 0
         norm_diff = norm_active - norm_ambient
-        norm_diff[ norm_diff <= 0] = np.nan
+        norm_diff[ norm_diff <= 0] = 0  #np.nan
         norm_diff = norm_diff.interpolate(method='cubic')
         clean = active_forward * norm_diff
         clean[:int(decayed_idx*(0.5))] = 1
