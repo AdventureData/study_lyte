@@ -109,7 +109,7 @@ def merge_on_to_time(df_list, final_time):
         if i == 0:
             result = data
         else:
-            result = pd.merge_ordered(result, data, on='time', fill_method='cubic')
+            result = pd.merge_ordered(result, data, on='time')
 
     # interpolate the nan's
     result = result.interpolate(method='nearest', limit_direction='both')
@@ -137,7 +137,7 @@ def merge_time_series(df_list):
         if i == 0:
             result = df.copy()
         else:
-            result = pd.merge_ordered(result, df, on='time', fill_method='cubic')
+            result = pd.merge_ordered(result, df, on='time')
 
     # interpolate the nan's
     result = result.interpolate(method='index')

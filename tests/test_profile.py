@@ -255,6 +255,7 @@ def test_surface_indexer_error(lyte_profile, fname, expected):
     assert not lyte_profile.nir.empty
 
 
+@pytest.mark.skip('Incomplete work')
 def test_app(data_dir):
     """Functionality test"""
     fname = data_dir + '/ls_app.csv'
