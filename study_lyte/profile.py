@@ -109,7 +109,7 @@ class GenericProfileV6:
                 if "ACCRANGE" in self._meta.keys():
                     self._meta['ACC. Range'] = float(self._meta['ACCRANGE'])
                 else:
-                    self._meta['ACC. Range'] = 2
+                    self._meta['ACC. Range'] = 16
 
             else:
                 self._meta['ACC. Range'] = float(self._meta['ACC. Range'])
