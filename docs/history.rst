@@ -57,3 +57,11 @@ Initial Development (2022-01-29)
 * Improved detection methods to be performant
 * Enabled metadata read separately from main data
 * Added resolution to aggregate by depth
+
+0.8.0 (2024-12-05)
+--------------------------------
+* Improvements in Ground detection
+* Reducing the impact of ambient removal
+* Modernization: updated to packages and pytoml migration 
+* Subclasses Profile for variations in data files 
+* Angle of attack property added.
