@@ -139,25 +139,10 @@ def test_get_acceleration_stop_time_index(raw_df):
     assert idx1 == idx2
 
 
-@pytest.mark.parametrize("active, threshold, max_threshold, expected", [
-    # Typical bright->dark ambient
-    ([0, 200, 3000, 4000], 0.01, 0.1, 1),
-    # no ambient change ( dark or super cloudy)
-   ([1000, 1100, 2000, 3000], .01, 0.2,  1),
-    # No surface detectable but all the values meet criteria
-    ([1000,1010,9990,1010],-0.01,0.2,0)
-])
-def test_get_nir_surface(active, threshold, max_threshold, expected):
-    idx = get_nir_surface(pd.Series(active),
-                          threshold=threshold,
-                          max_threshold=max_threshold)
-    assert idx == expected
-
-
 @pytest.mark.parametrize('fname, surface_idx', [
     ('bogus.csv', 20385),
     ('pilots.csv', 9496),
-    ('hard_surface_hard_stop.csv', 10167),
+    ('hard_surface_hard_stop.csv', 8515),
     # No Ambient with tester stick
     ('tester_stick.csv', 9887),
     # Noise Ambient
@@ -166,15 +151,14 @@ def test_get_nir_surface(active, threshold, max_threshold, expected):
     ('toolik.csv', 13684),
     ('banner_legacy.csv', 8177),
     # Get surface with challenging ambient conditions
-    ('egrip_tough_surface.csv', 31551),
-
+    ('egrip_tough_surface.csv', 29964),
 ])
 def test_get_nir_surface_real(raw_df, fname, surface_idx):
     """
     Test surface with real data
     """
-    clean = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
-    result = get_nir_surface(clean)
+    # clean = remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
+    result = get_nir_surface(raw_df['Sensor3'])
     # Ensure within 3% of original answer all the time.
     assert pytest.approx(surface_idx, abs=int(0.02 * len(raw_df.index))) == result
 

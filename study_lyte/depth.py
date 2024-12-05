@@ -1,5 +1,5 @@
 import pandas as pd
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid
 import numpy as np
 from types import SimpleNamespace
 
@@ -33,9 +33,9 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     position_vec = {}
     for i, axis in enumerate(acceleration_columns):
         # Integrate acceleration to velocity
-        v = cumtrapz(acc[axis].values, acc.index, initial=0)
+        v = cumulative_trapezoid(acc[axis].values, acc.index, initial=0)
         # Integrate velocity to position
-        position_vec[axis] = cumtrapz(v, acc.index, initial=0)
+        position_vec[axis] = cumulative_trapezoid(v, acc.index, initial=0)
 
     position_df = pd.DataFrame.from_dict(position_vec)
     position_df['time'] = acc.index

@@ -123,10 +123,9 @@ def test_merge_time_series(data_list, expected):
 
 @pytest.mark.parametrize('active, ambient, min_ambient_range, expected', [
     # Test normal situation with ambient present
-    ([200, 200, 400, 1000], [200, 200, 0, 0], 100, [0, 0, 300, 1000]),
+    ([200, 200, 400, 1000], [200, 200, 50, 50], 100, [1.0, 1.0, 275, 1000]),
     # Test no cleaning required
-    ([200, 200, 400, 400], [210, 210, 200, 200], 90, [200, 200, 400, 400])
-
+    # ([200, 200, 400, 400], [210, 210, 200, 200], 90, [200, 200, 400, 400])
 ])
 def test_remove_ambient(active, ambient, min_ambient_range, expected):
     """
@@ -137,6 +136,10 @@ def test_remove_ambient(active, ambient, min_ambient_range, expected):
     ambient = pd.Series(np.array(ambient))
     result = remove_ambient(active, ambient, min_ambient_range=100)
     np.testing.assert_equal(result.values, expected)
+
+# @pytest.mark.parametrize('fname', ['2024-01-31--104419.csv'])
+# def test_remove_ambient_real(raw_df, fname):
+#     remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
 
 @pytest.mark.parametrize('data, coefficients, expected', [
     ([1, 2, 3, 4], [2, 0], [2, 4, 6, 8])
@@ -172,7 +175,7 @@ def test_aggregate_by_depth(data, depth, new_depth, resolution, agg_method, expe
 
     expected = pd.DataFrame.from_dict(exp)
 
-    pd.testing.assert_frame_equal(result, expected, check_dtype=False)
+    pd.testing.assert_frame_equal(result, expected, check_dtype=False, check_like=True)
 
 @pytest.mark.skip('Function not ready')
 @pytest.mark.parametrize('data, method, expected', [

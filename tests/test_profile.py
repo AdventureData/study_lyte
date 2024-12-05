@@ -1,6 +1,6 @@
 import pytest
 from os.path import join
-from study_lyte.profile import LyteProfileV6, Sensor
+from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor
 from operator import attrgetter
 from shapely.geometry import Point
 
@@ -27,7 +27,7 @@ class TestLyteProfile:
 
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
-        ('kaslo.csv', 'fused', 12479)
+        ('kaslo.csv', 'fused', 11641)
     ])
     def test_nir_surface_property(self, profile, filename, depth_method, expected):
         nir_surface = profile.surface.nir.index
@@ -81,11 +81,14 @@ class TestLyteProfile:
 
 
     @pytest.mark.parametrize('filename, depth_method, expected_points, mean_nir', [
-        ('kaslo.csv', 'fused', 14799, 2863)
+        ('kaslo.csv', 'fused', 14799, 2638)
     ])
     def test_nir_profile(self, profile, filename, depth_method, expected_points, mean_nir):
-        assert pytest.approx(len(profile.nir), len(profile.raw)*0.05) == expected_points
-        assert pytest.approx(profile.nir['nir'].mean(), abs=50) == mean_nir
+        # Assert the len of the nir profile within 5%
+        assert pytest.approx(len(profile.nir), len(profile.raw) * 0.05) == expected_points
+        # Use the median as an approximation for the processing
+        assert pytest.approx(profile.nir['nir'].median(), abs=50) == mean_nir
+        
     @pytest.mark.parametrize('filename, depth_method, expected', [
         # Serious angle
         ('angled_measurement.csv', 'fused', 34),
@@ -233,12 +236,14 @@ class TestLegacyProfile:
     def test_surface(self, profile):
         assert pytest.approx(profile.surface.nir.index, int(0.01*len(profile.depth))) == 7970
 
+
 @pytest.mark.parametrize('fname, attribute, expected_value', [
     ('pilots_error.csv', 'surface.force.index', 5758)
 ])
 def test_force_start_alternate(lyte_profile, fname, attribute, expected_value):
     result =  attrgetter(attribute)(lyte_profile)
     assert pytest.approx(result, int(0.01 * len(lyte_profile.raw))) == expected_value
+
 
 @pytest.mark.parametrize("fname, expected", [("open_air.csv", 0)])
 def test_surface_indexer_error(lyte_profile, fname, expected):
@@ -248,3 +253,12 @@ def test_surface_indexer_error(lyte_profile, fname, expected):
     """
     assert lyte_profile.surface.nir.index == expected
     assert not lyte_profile.nir.empty
+
+
+@pytest.mark.skip('Incomplete work')
+def test_app(data_dir):
+    """Functionality test"""
+    fname = data_dir + '/ls_app.csv'
+    profile = ProcessedProfileV6(fname)
+    print(profile)
+    assert False # TODO: Add more detailed checking

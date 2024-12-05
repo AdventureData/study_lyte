@@ -178,7 +178,7 @@ def get_acceleration_stop(acceleration, threshold=-0.2, max_threshold=0.1):
     return acceleration_stop
 
 
-def get_nir_surface(clean_active, threshold=-1, max_threshold=0.25):
+def get_nir_surface(clean_active, threshold=30, max_threshold=None):
     """
     Using the cleaned active, estimate the index at when the probe was in the snow.
 
@@ -190,22 +190,22 @@ def get_nir_surface(clean_active, threshold=-1, max_threshold=0.25):
     Return:
         surface: Integer index of the estimated snow surface
     """
-    n = get_points_from_fraction(len(clean_active), 0.01)
+    # n = get_points_from_fraction(len(clean_active), 0.01)
     # Normalize by data unaffected by ambient
-    clean_norm = clean_active / clean_active[n:].mean()
-    neutral = get_neutral_bias_at_border(clean_norm)
+    neutral = get_neutral_bias_at_border(clean_active)
 
     # Retrieve a likely candidate under challenging ambient conditions
-
-    max_idx = np.argwhere((neutral == neutral.min()).values)[0][0]
+    window = get_points_from_fraction(len(neutral), 0.01)
+    diff = neutral.rolling(window=window).std().values
 
     # Detect likely candidate normal ambient conditions
-    surface = get_signal_event(neutral, search_direction='forward', threshold=threshold,
-                               max_threshold=max_threshold, n_points=n)
+    surface = get_signal_event(diff, search_direction='backward', threshold=threshold,
+                               max_threshold=max_threshold, n_points=1)
     # No surface found and all values met criteria
-    if surface == len(neutral)-1:
+    if surface == len(neutral)-1 or surface is None:
         surface = 0
-
+    # from .plotting import plot_nir_surface
+    # plot_nir_surface(neutral, diff, surface)
     return surface
 
 
@@ -250,7 +250,7 @@ def get_ground_strike(signal, stop_idx):
     """
     The probe hits ground somtimes before we detect stop.
     """
-    buffer = get_points_from_fraction(len(signal), 0.05)
+    buffer = get_points_from_fraction(len(signal), 0.12)
     start = stop_idx - buffer
     start = start if start > 0 else 0
     end = stop_idx + buffer
@@ -258,20 +258,30 @@ def get_ground_strike(signal, stop_idx):
     rel_stop = stop_idx - start
 
     sig_arr = signal[start:end]
-    norm1 = get_neutral_bias_at_index(sig_arr, rel_stop + buffer)
+    window = get_points_from_fraction(len(sig_arr), 0.01)
+    diff = sig_arr.rolling(window=window).std().values
+    diff = get_neutral_bias_at_border(diff, direction='backward')
 
-    # norm1 = get_neutral_bias_at_border(signal[start:end], 0.1, 'backward')
-    diff = zfilter(norm1.diff(), 0.001)    # Large change in signal
-    impact = get_signal_event(diff, threshold=-1000, max_threshold=-70, n_points=1, search_direction='forward')
+    # Large change in signal
+    impact = get_signal_event(diff, threshold=150, max_threshold=1000, n_points=1, search_direction='forward')
 
     # Large chunk of data that's the same near the stop
+    norm1 = get_neutral_bias_at_index(sig_arr, rel_stop+buffer).values
     n_points = get_points_from_fraction(len(norm1), 0.1)
-    long_press = get_signal_event(norm1, threshold=-150, max_threshold=150, n_points=n_points, search_direction='backward')
-    tol = get_points_from_fraction(len(norm1), 0.2)
+    long_press = get_signal_event(norm1, threshold=-10000, max_threshold=150, n_points=n_points, search_direction='backward')
+    tol = get_points_from_fraction(len(norm1), 0.1)
 
     ground = None
-    if impact is not None and long_press is not None:
+    if impact is not None:
+        impact += start
+    if long_press is not None:
+        long_press += start
+
+    if long_press is not None and impact is not None:
         if (long_press-tol) <= impact <= (long_press+tol):
-            ground = impact + start
+            ground = impact
+
+    # from .plotting import  plot_ground_strike, plot_ts
+    # plot_ground_strike(signal, diff, norm1, start, stop_idx, impact, long_press,ground)
 
     return ground

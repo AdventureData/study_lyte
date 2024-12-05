@@ -111,16 +111,55 @@ def plot_fused_depth(acc_depth, baro_depth, avg, scaled_baro=None, error=None):
     plt.show()
 
 
-
-def plot_ground_strike(signal, search_start, stop_idx, impact, long_press, ground):
+def plot_ground_strike(signal, impact_series, long_press_series, search_start, stop_idx, impact, long_press, ground):
     events = [('stop', stop_idx)]
+    impact_events = [('stop', stop_idx - search_start)]
+
     if long_press is not None:
-        events.append(('long_press', long_press + search_start))
+        events.append(('long_press', long_press))
+        impact_events.append(('long_press', long_press-search_start))
+
     if impact is not None:
-        events.append(('impact', impact + search_start))
+        events.append(('impact', impact))
+        impact_events.append(('impact', impact-search_start))
+
     if ground is not None:
         events.append(('ground', ground))
-    ax = plot_ts(signal, events=events,show=False)
-    ax.legend()
+
+    fig, (ax1, ax2, ax3) = plt.subplots(3,1)
+    ax1 = plot_ts(signal, events=events,show=False, ax=ax1)
+    ax1.set_title('Full series and events')
+    ax1.legend()
+
+    plot_ts(impact_series, events=impact_events, ax=ax2, show=False)
+    ax2.set_title('impact')
+    ax2.legend()
+
+    plot_ts(long_press_series, events=impact_events, ax=ax3, show=False)
+    ax3.set_title('Long Press')
+    ax3.legend()
+    plt.tight_layout()
     plt.show()
 
+def plot_nir_cleaning(active, ambient, norm_active, norm_ambient, diff, clean):
+
+    fig,axes = plt.subplots(2,1)
+    # Plot normalized
+    plot_ts(norm_ambient, ax=axes[0], data_label='norm amb.', show=False)
+    plot_ts(norm_active, ax=axes[0], data_label='norm act.', show=False)
+    plot_ts(diff, ax=axes[0], data_label='norm diff', show=False)
+
+    plot_ts(ambient, ax=axes[1], data_label='ambient', show=False)
+    plot_ts(active, ax=axes[1], data_label='active', show=False)
+
+    plot_ts(clean, ax=axes[1], data_label='clean.', show=False)
+    plt.show()
+
+def plot_nir_surface(clean_active, diff, surface):
+    events = []
+    if surface is not None:
+        events.append(('surface', surface))
+
+    fig,axes = plt.subplots(2, 1)
+    plot_ts(clean_active,events=events, ax=axes[0], show=False)
+    plot_ts(diff, events=events, ax=axes[1])
