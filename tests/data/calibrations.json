@@ -1,0 +1,7 @@
+{
+	"252813070A020004":{"Sensor1":[0, 0, -10, 409],
+						"comment": "Test"},
+
+	"default":{"Sensor1":[0, 0, -1, 4096],
+		       "comment": "default"}
+}
