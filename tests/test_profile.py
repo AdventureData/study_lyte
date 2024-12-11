@@ -1,5 +1,7 @@
 import pytest
 from os.path import join
+from pathlib import Path
+from study_lyte.calibrations import Calibrations
 from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor
 from operator import attrgetter
 from shapely.geometry import Point
@@ -216,6 +218,27 @@ class TestLyteProfile:
         """Test we are parsing the point info"""
         result = profile.report_card()
         assert True
+
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Test assignment of the serial number from file
+        ("open_air.csv", 'fused', "252813070A020004"),
+        # Test serial number not found
+        ("mores_20230119.csv", 'fused', "UNKNOWN"),
+    ])
+    def test_serial_number(self, profile,filename, depth_method, expected):
+        assert profile.serial_number == expected
+
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Test assignment of the serial number from file
+        ("open_air.csv", 'fused', -10),
+        # Test serial number not found
+        ("mores_20230119.csv", 'fused', -1),
+    ])
+    def test_set_calibration(self, data_dir, profile,filename, depth_method, expected):
+        p = Path(join(data_dir,'calibrations.json'))
+        calibrations = Calibrations(p)
+        profile.set_calibration(calibrations)
+        assert profile.calibration['Sensor1'][2] == expected
 
 
 class TestLegacyProfile:

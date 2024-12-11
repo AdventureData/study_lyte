@@ -12,6 +12,7 @@ LOG = logging.getLogger('study_lyte.calibrations')
 
 @dataclass()
 class Calibration:
+    """Small class to make accessing calibration data a bit more convenient"""
     serial: str
     calibration: dict[str, List[float]]
 
@@ -26,6 +27,7 @@ class Calibrations:
             self._info = json.load(fp)
 
     def from_serial(self, serial:str) -> Calibration:
+        """ Build data object from the calibration result """
         cal = self._info.get(serial)
         if cal is None:
             LOG.warning(f"No Calibration found for serial {serial}, using default")
@@ -35,6 +37,5 @@ class Calibrations:
         else:
             LOG.warning(f"Calibration found ({serial})!")
 
-        result = Calibration(serial=serial,
-                             calibration=cal)
+        result = Calibration(serial=serial, calibration=cal)
         return result
