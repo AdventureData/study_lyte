@@ -11,10 +11,12 @@ from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calib
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
 from .depth import AccelerometerDepth, BarometerDepth
 from .logging import setup_log
+from .calibrations import Calibrations
 import logging
 setup_log()
 
 LOG = logging.getLogger('study_lyte.profile')
+
 @dataclass
 class Event:
     name: str
@@ -39,22 +41,24 @@ class GenericProfileV6:
         """
         self.filename = Path(filename)
         self.surface_detection_offset = surface_detection_offset
-        self.calibration = calibration or {}
         self.tip_diameter_mm = tip_diameter_mm
 
         # Properties
         self._raw = None
         self._meta = None
         self._point = None
+        self._serial_number = None
+        self._calibration = calibration or None
         self.header_position = None
 
+        # Dataframes
         self._depth = None  # Final depth series used for analysis
         self._acceleration = None  # No gravity acceleration
         self._cropped = None  # Full dataframe cropped to surface and stop
         self._force = None
         self._nir = None
 
-        # Useful stats/info
+        # Useful stats/info properties
         self._distance_traveled = None  # distance travelled while moving
         self._distance_through_snow = None  # Distance travelled while in snow
         self._avg_velocity = None  # avg velocity of the probe while in the snow
@@ -62,7 +66,7 @@ class GenericProfileV6:
         self._datetime = None
         self._has_upward_motion = None  # Flag for datasets containing upward motion
 
-        # Events
+        # Time series events
         self._start = None
         self._stop = None
         self._surface = None
@@ -75,6 +79,27 @@ class GenericProfileV6:
         for event in [self._start, self._stop, self._surface.nir, self._surface.force]:
             event.depth = self.depth.iloc[event.index]
 
+    @property
+    def serial_number(self):
+        if self._serial_number is None:
+            self._serial_number = self.metadata.get('Serial Num.')
+            if self._serial_number is None:
+                self._serial_number = 'UNKNOWN'
+        return self._serial_number
+
+    def set_calibration(self, ext_calibrations:Calibrations):
+        """
+        Assign new calibration using a collection of calibrations
+        Args:
+            ext_calibrations: External collection of calibrations
+        """
+        cal = ext_calibrations.from_serial(self.serial_number)
+        self._calibration = cal.calibration
+
+    @property
+    def calibration(self):
+        return self._calibration
+
     @classmethod
     def from_metadata(cls, filename, **kwargs):
         profile = cls(filename)
@@ -82,7 +107,6 @@ class GenericProfileV6:
             return ProcessedProfileV6(filename)
         else:
             return LyteProfileV6(filename)
-
 
     @property
     def raw(self):
