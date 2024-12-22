@@ -35,7 +35,7 @@ class Calibrations:
             serial = 'UNKNOWN'
 
         else:
-            LOG.warning(f"Calibration found ({serial})!")
+            LOG.info(f"Calibration found ({serial})!")
 
         result = Calibration(serial=serial, calibration=cal)
         return result

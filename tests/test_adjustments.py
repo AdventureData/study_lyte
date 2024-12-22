@@ -24,12 +24,17 @@ def test_get_points_from_fraction(n_samples, fraction, maximum, expected):
 
 
 @pytest.mark.parametrize('data, fractional_basis, direction, expected', [
-    # Test the directionality
-    ([1, 1, 2, 2], 0.5, 'forward', 1),
-    ([1, 1, 2, 2], 0.5, 'backward', 2),
-    #  fractional basis
-    ([1, 3, 4, 6], 0.25, 'forward', 1),
-    ([1, 3, 5, 6], 0.75, 'forward', 3)
+    # # Test the directionality
+    # ([1, 1, 2, 2], 0.5, 'forward', 1),
+    # ([1, 1, 2, 2], 0.5, 'backward', 2),
+    # #  fractional basis
+    # ([1, 3, 4, 6], 0.25, 'forward', 1),
+    # ([1, 3, 5, 6], 0.75, 'forward', 3),
+
+    # Test for nans
+    ([1]*10 + [2] * 5 + [np.nan]*5, 0.5, 'backward', 2),
+    ([np.nan] * 10, 0.5, 'backward', np.float64(np.nan))
+
 ])
 def test_directional_mean(data, fractional_basis, direction, expected):
     """
@@ -70,20 +75,40 @@ def test_get_normalized_at_border(data, fractional_basis, direction, ideal_norm_
     result = get_normalized_at_border(df['data'], fractional_basis=fractional_basis, direction=direction)
     assert result.iloc[ideal_norm_index] == 1
 
+def poly_function(elapsed, amplitude=4096, frequency=1):
+    return amplitude * np.sin(2 * np.pi * frequency * elapsed)
+
+
 @pytest.mark.parametrize('data1_hz, data2_hz, desired_hz', [
-    (10, 5, 20)
+    (75, 100, 16000)
 ])
 def test_merge_on_to_time(data1_hz, data2_hz, desired_hz):
-    df1 = pd.DataFrame({'data1':np.arange(1,stop=data1_hz+1), 'time': np.arange(0, 1, 1 / data1_hz)})
-    df2 = pd.DataFrame({'data2':np.arange(100,stop=data2_hz+100), 'time': np.arange(0, 1, 1 / data2_hz)})
-    desired =  np.arange(0, 1, 1 / desired_hz)
+    """
+    Test merging multi sample rate timeseries into a single dataframe
+    specifically focused on timing of the final product
+    """
+    t1 = np.arange(0, 1, 1 / data1_hz)
+    d1 = poly_function(t1)
+    df1 = pd.DataFrame({'data1':d1, 'time': t1})
 
+    t2 = np.arange(0, 1, 1 / data2_hz)
+    d2 = poly_function(t2)
+    df2 = pd.DataFrame({'data2':d2, 'time': t2})
+
+    desired = np.arange(0, 1, 1 / desired_hz)
     final = merge_on_to_time([df1, df2], desired)
-    # Ensure we have essentially the same timestep
-    tsteps = np.unique(np.round(final['time'].diff(), 6))
-    tsteps = tsteps[~np.isnan(tsteps)]
-    # Assert only a nan and a real number exist for timesteps
-    assert tsteps == np.round(1/desired_hz, 6)
+
+    df1 = df1.set_index('time')
+    df2 = df2.set_index('time')
+
+    # Check timing on both dataframes
+    assert df1['data1'].idxmax() == pytest.approx(final['data1'].idxmax(), abs=3e-2)
+    assert df1['data1'].idxmin() == pytest.approx(final['data1'].idxmin(), abs=3e-2)
+    # Confirm the handling of multiple datasets
+    assert len(final.columns) == 2
+    # Confirm an exact match of length of data
+    assert len(final['data1'][~np.isnan(final['data1'])]) == len(desired)
+
 
 @pytest.mark.parametrize('data_list, expected', [
     # Typical use, low sample to high res

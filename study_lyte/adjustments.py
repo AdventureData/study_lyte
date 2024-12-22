@@ -90,29 +90,35 @@ def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, 
         border_norm = series
     return border_norm
 
-def merge_on_to_time(df_list, final_time):
-    """
-    Reindex the df from the list onto a final time stamp
-    """
-    # Build dummy result in case no data is passed
-    result = pd.DataFrame()
+def merge_on_to_time(df_list, final_time=None):
+    # Find the fast sampling rate
+    if final_time is None:
+        largest = df_list[0]
+        for df in df_list:
+            if len(df) > len(largest):
+                largest = df
 
-    # Merge everything else to it
-    for i, df in enumerate(df_list):
+        if largest.index.name != 'time':
+            largest = largest.set_index('time')
+        final_time = largest.index
+
+    result = None
+    for df in df_list:
         time_df = df.copy()
         if df.index.name != 'time':
             time_df = time_df.set_index('time')
         else:
             time_df = df.copy()
+        # Interpolate df2 to match df1's timestamps
+        data = time_df.reindex(final_time).interpolate(method='cubic').fillna(method='ffill')
 
-        data = time_df.reindex(time_df.index.union(final_time)).interpolate(method='cubic').reindex(final_time)
-        if i == 0:
+        # Merge
+        if result is None:
             result = data
         else:
-            result = pd.merge_ordered(result, data, on='time')
+            result = pd.merge(result, data, left_index=True, right_index=True)
+            # result = pd.merge_ordered(result, data, on='time', left_index=True, right_index=True)
 
-    # interpolate the nan's
-    result = result.interpolate(method='nearest', limit_direction='both')
     return result
 
 
