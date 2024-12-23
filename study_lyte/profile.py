@@ -168,7 +168,7 @@ class GenericProfileV6:
         if self._force is None:
             if 'Sensor1' in self.calibration.keys():
                 force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0, maximum=15000)
-                # force = force - force[0]
+                force = force - np.nanmean(force[0:20])
             else:
                 force = self.raw['Sensor1'].values
 
