@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "study-lyte"
-version = "version=0.9.0"
+version = "version=0.9.1"
 description = "Analysis software for the Lyte probe, a digital penetrometer for studying snow"
 keywords = ["snow penetrometer", "smart probe", "digital penetrometer", 'lyte probe', "avalanches", "snow densiy"]
 readme = "README.rst"
