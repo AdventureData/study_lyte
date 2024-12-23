@@ -65,3 +65,9 @@ Initial Development (2022-01-29)
 * Modernization: updated to packages and pytoml migration 
 * Subclasses Profile for variations in data files 
 * Angle of attack property added.
+
+0.9.0 (2024-12-23)
+--------------------------------
+* Calibration json addition 
+* Improved merge technique for pandas 2.0.0
+  
