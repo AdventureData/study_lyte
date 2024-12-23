@@ -90,35 +90,24 @@ def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, 
         border_norm = series
     return border_norm
 
-def merge_on_to_time(df_list, final_time=None):
-    # Find the fast sampling rate
-    if final_time is None:
-        largest = df_list[0]
-        for df in df_list:
-            if len(df) > len(largest):
-                largest = df
-
-        if largest.index.name != 'time':
-            largest = largest.set_index('time')
-        final_time = largest.index
-
+def merge_on_to_time(df_list, final_time):
+    """"""
     result = None
     for df in df_list:
+
         time_df = df.copy()
         if df.index.name != 'time':
             time_df = time_df.set_index('time')
-        else:
-            time_df = df.copy()
-        # Interpolate df2 to match df1's timestamps
-        data = time_df.reindex(final_time).interpolate(method='cubic').fillna(method='ffill')
 
-        # Merge
+        new = pd.DataFrame(columns=time_df.columns, index=final_time)
+        for c in time_df.columns:
+            new[c] = np.interp(final_time,  # Target indices (100 Hz)
+                               time_df.index,  # Original 75 Hz indices
+                               time_df[c])
         if result is None:
-            result = data
+            result = new
         else:
-            result = pd.merge(result, data, left_index=True, right_index=True)
-            # result = pd.merge_ordered(result, data, on='time', left_index=True, right_index=True)
-
+            result = result.join(new)
     return result
 
 
