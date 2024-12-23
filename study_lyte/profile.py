@@ -456,7 +456,7 @@ class LyteProfileV6(GenericProfileV6):
             if idx is not None:
                 self._stop = Event(name='stop', index=idx, depth=None, time=self.raw['time'].iloc[idx])
             else:
-                self._stop = Event(name='stop', index=0, depth=None, time=self.raw['time'].iloc[0])
+                self._stop = Event(name='stop', index=len(self.raw) - 1, depth=None, time=self.raw['time'].iloc[0])
 
         return self._stop
 

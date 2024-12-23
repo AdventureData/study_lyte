@@ -24,15 +24,15 @@ def test_get_points_from_fraction(n_samples, fraction, maximum, expected):
 
 
 @pytest.mark.parametrize('data, fractional_basis, direction, expected', [
-    # # Test the directionality
-    # ([1, 1, 2, 2], 0.5, 'forward', 1),
-    # ([1, 1, 2, 2], 0.5, 'backward', 2),
-    # #  fractional basis
-    # ([1, 3, 4, 6], 0.25, 'forward', 1),
-    # ([1, 3, 5, 6], 0.75, 'forward', 3),
+    # Test the directionality
+    ([1, 1, 2, 2], 0.5, 'forward', 1),
+    ([1, 1, 2, 2], 0.5, 'backward', 2),
+    #  fractional basis
+    ([1, 3, 4, 6], 0.25, 'forward', 1),
+    ([1, 3, 5, 6], 0.75, 'forward', 3),
 
     # Test for nans
-    # ([1]*10 + [2] * 5 + [np.nan]*5, 0.5, 'backward', 2),
+    ([1]*10 + [2] * 5 + [np.nan]*5, 0.5, 'backward', 2),
     ([np.nan] * 10, 0.5, 'backward', np.nan)
 
 ])
@@ -83,7 +83,7 @@ def poly_function(elapsed, amplitude=4096, frequency=1):
 
 
 @pytest.mark.parametrize('data1_hz, data2_hz, desired_hz', [
-    # (75, 100, 16000),
+    (75, 100, 16000),
     (100, 75, 100),
 
 ])
@@ -154,7 +154,7 @@ def test_merge_time_series(data_list, expected):
     # Test normal situation with ambient present
     ([200, 200, 400, 1000], [200, 200, 50, 50], 100, [1.0, 1.0, 275, 1000]),
     # Test no cleaning required
-    # ([200, 200, 400, 400], [210, 210, 200, 200], 90, [200, 200, 400, 400])
+    ([200, 200, 400, 400], [210, 210, 200, 200], 90, [200, 200, 400, 400])
 ])
 def test_remove_ambient(active, ambient, min_ambient_range, expected):
     """
@@ -165,10 +165,6 @@ def test_remove_ambient(active, ambient, min_ambient_range, expected):
     ambient = pd.Series(np.array(ambient))
     result = remove_ambient(active, ambient, min_ambient_range=100)
     np.testing.assert_equal(result.values, expected)
-
-# @pytest.mark.parametrize('fname', ['2024-01-31--104419.csv'])
-# def test_remove_ambient_real(raw_df, fname):
-#     remove_ambient(raw_df['Sensor3'], raw_df['Sensor2'])
 
 @pytest.mark.parametrize('data, coefficients, expected', [
     ([1, 2, 3, 4], [2, 0], [2, 4, 6, 8])
@@ -182,15 +178,13 @@ def test_apply_calibration(data, coefficients, expected):
 
 @pytest.mark.parametrize("data, depth, new_depth, resolution, agg_method, expected_data", [
     # Test with negative depths
-    #([[2, 4, 6, 8]], [-10, -20, -30, -40], [-20, -40], None, 'mean', [[3, 7]]),
+    ([[2, 4, 6, 8]], [-10, -20, -30, -40], [-20, -40], None, 'mean', [[3, 7]]),
     # Test with column specific agg methods
-    #([[2, 4, 6, 8], [1, 1, 1, 1]], [-10, -20, -30, -40], [-20, -40], None, {'data0': 'mean','data1':'sum'}, [[3, 7], [2, 2]]),
+    ([[2, 4, 6, 8], [1, 1, 1, 1]], [-10, -20, -30, -40], [-20, -40], None, {'data0': 'mean','data1':'sum'}, [[3, 7], [2, 2]]),
     # Test with resolution
     ([[2, 4, 6, 8]], [-10, -20, -30, -40], None, 20, 'mean', [[3, 7]]),
 ])
 def test_aggregate_by_depth(data, depth, new_depth, resolution, agg_method, expected_data):
-    """
-    """
     data_dict = {f'data{i}':d for i,d in enumerate(data)}
     data_dict['depth'] = depth
     df = pd.DataFrame.from_dict(data_dict)

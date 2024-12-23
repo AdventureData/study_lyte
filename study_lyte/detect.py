@@ -171,7 +171,7 @@ def get_acceleration_stop(acceleration, threshold=-0.2, max_threshold=0.1):
                                          n_points=n,
                                          search_direction='backward')
 
-    if acceleration_stop is None:
+    if acceleration_stop is None or acceleration_stop == 0:
         acceleration_stop = len(acceleration) - 1
     else:
         acceleration_stop = acceleration_stop + search_start

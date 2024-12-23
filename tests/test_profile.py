@@ -283,5 +283,4 @@ def test_app(data_dir):
     """Functionality test"""
     fname = data_dir + '/ls_app.csv'
     profile = ProcessedProfileV6(fname)
-    print(profile)
     assert False # TODO: Add more detailed checking
