@@ -1,5 +1,7 @@
 import pytest
 from os.path import join
+from pathlib import Path
+from study_lyte.calibrations import Calibrations
 from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor
 from operator import attrgetter
 from shapely.geometry import Point
@@ -8,7 +10,7 @@ class TestLyteProfile:
 
     @pytest.fixture()
     def profile(self, data_dir, filename, depth_method):
-        return LyteProfileV6(join(data_dir, filename), calibration={'Sensor1': [1, 0]}, depth_method=depth_method)
+        return LyteProfileV6(join(data_dir, filename), calibration={'Sensor1': [-1, 4096]}, depth_method=depth_method)
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
         ('kaslo.csv', 'fused', 9539)
@@ -66,17 +68,17 @@ class TestLyteProfile:
         assert pytest.approx(delta, abs=0.05) == expected
 
     @pytest.mark.parametrize('filename, depth_method, expected_points, mean_force', [
-        ('kaslo.csv', 'fused', 16377, 3500)
+        ('kaslo.csv', 'fused', 16377, 544)
     ])
     def test_force_profile(self, profile, filename, depth_method, expected_points, mean_force):
         assert pytest.approx(len(profile.force), len(profile.raw)*0.05) == expected_points
         assert pytest.approx(profile.force['force'].mean(), abs=150) == mean_force
 
     @pytest.mark.parametrize('filename, depth_method, expected_points, mean_pressure', [
-        ('kaslo.csv', 'fused', 16377, 179)
+        ('kaslo.csv', 'fused', 16377, 27)
     ])
     def test_pressure_profile(self, profile, filename, depth_method, expected_points, mean_pressure):
-        assert pytest.approx(len(profile.pressure), len(profile.raw)*0.05) == expected_points
+        assert pytest.approx(len(profile.pressure), len(profile.raw) * 0.05) == expected_points
         assert pytest.approx(profile.pressure['pressure'].mean(), abs=10) == mean_pressure
 
 
@@ -217,6 +219,27 @@ class TestLyteProfile:
         result = profile.report_card()
         assert True
 
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Test assignment of the serial number from file
+        ("open_air.csv", 'fused', "252813070A020004"),
+        # Test serial number not found
+        ("mores_20230119.csv", 'fused', "UNKNOWN"),
+    ])
+    def test_serial_number(self, profile,filename, depth_method, expected):
+        assert profile.serial_number == expected
+
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Test assignment of the serial number from file
+        ("open_air.csv", 'fused', -10),
+        # Test serial number not found
+        ("mores_20230119.csv", 'fused', -1),
+    ])
+    def test_set_calibration(self, data_dir, profile,filename, depth_method, expected):
+        p = Path(join(data_dir,'calibrations.json'))
+        calibrations = Calibrations(p)
+        profile.set_calibration(calibrations)
+        assert profile.calibration['Sensor1'][2] == expected
+
 
 class TestLegacyProfile:
     @pytest.fixture()
@@ -260,5 +283,4 @@ def test_app(data_dir):
     """Functionality test"""
     fname = data_dir + '/ls_app.csv'
     profile = ProcessedProfileV6(fname)
-    print(profile)
     assert False # TODO: Add more detailed checking

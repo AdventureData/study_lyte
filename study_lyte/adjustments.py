@@ -91,28 +91,23 @@ def get_normalized_at_border(series: pd.Series, fractional_basis: float = 0.01, 
     return border_norm
 
 def merge_on_to_time(df_list, final_time):
-    """
-    Reindex the df from the list onto a final time stamp
-    """
-    # Build dummy result in case no data is passed
-    result = pd.DataFrame()
+    """"""
+    result = None
+    for df in df_list:
 
-    # Merge everything else to it
-    for i, df in enumerate(df_list):
         time_df = df.copy()
         if df.index.name != 'time':
             time_df = time_df.set_index('time')
-        else:
-            time_df = df.copy()
 
-        data = time_df.reindex(time_df.index.union(final_time)).interpolate(method='cubic').reindex(final_time)
-        if i == 0:
-            result = data
+        new = pd.DataFrame(columns=time_df.columns, index=final_time)
+        for c in time_df.columns:
+            new[c] = np.interp(final_time,  # Target indices (100 Hz)
+                               time_df.index,  # Original 75 Hz indices
+                               time_df[c])
+        if result is None:
+            result = new
         else:
-            result = pd.merge_ordered(result, data, on='time')
-
-    # interpolate the nan's
-    result = result.interpolate(method='nearest', limit_direction='both')
+            result = result.join(new)
     return result
 
 
