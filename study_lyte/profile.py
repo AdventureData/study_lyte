@@ -166,11 +166,12 @@ class GenericProfileV6:
         calibrated force and depth as a pandas dataframe cropped to the snow surface and the stop of motion
         """
         if self._force is None:
-            if 'Sensor1' in self.calibration.keys():
-                force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0, maximum=15000)
-                force = force - np.nanmean(force[0:20])
-            else:
-                force = self.raw['Sensor1'].values
+            # Default to raw data
+            force = self.raw['Sensor1'].values
+            if self.calibration is not None:
+                if 'Sensor1' in self.calibration.keys():
+                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0, maximum=15000)
+                    force = force - np.nanmean(force[0:20])
 
             self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
             # prefer a ground index if available
@@ -409,7 +410,7 @@ class LyteProfileV6(GenericProfileV6):
                                                    error=self.error.index)
 
                     if depth.min() < -230 and self.accelerometer.depth.min() > -230:
-                        LOG.warning('Fused depth result produced a profile > 250 cm. Defaulting to accelerometer')
+                        LOG.warning('Fused depth result produced a profile > 230 cm. Defaulting to accelerometer')
                         self._depth = self.accelerometer.depth
 
                     elif depth.min() < -230 and self.barometer.depth.min() > -230:
