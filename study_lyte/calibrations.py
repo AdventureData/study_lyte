@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import List
 from datetime import datetime
+import pandas as pd
 
 setup_log()
 
@@ -42,7 +43,6 @@ class Calibrations:
         cal = None
 
         if calibrations is None:
-            LOG.warning(f"No Calibration found for serial {serial}, using default")
             cal = self._info['default']
             serial = 'UNKNOWN'
 
@@ -59,8 +59,8 @@ class Calibrations:
                 else:
                     # Find the calibration that matches the date
                     for c in calibrations:
-                        if c['date'] >= date:
-                            cal = c['calibration']
+                        if date >= pd.to_datetime(c['date']):
+                            cal = c
 
                     # No matches were found, date is too early
                     if cal is None:
@@ -68,8 +68,10 @@ class Calibrations:
                         cal = self._info['default']
                         serial = 'UNKNOWN'
 
-        if cal is not None:
+        if cal is not None and serial != 'UNKNOWN':
             LOG.info(f"Calibration found ({serial})!")
+        else:
+            LOG.warning(f"No calibration found for {serial}, using default")
 
         result = Calibration(serial=serial, calibration=cal)
         return result
