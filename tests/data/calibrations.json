@@ -1,6 +1,17 @@
 {
-	"252813070A020004":{"Sensor1":[0, 0, -10, 409],
-						"comment": "Test"},
+	"252813070A020004":{
+		"Sensor1":[0, 0, -10, 409],
+		"comment": "Test"},
+
+	"252813070A020005":[
+		{"date": "2024-01-01",
+		"Sensor1":[0, 0, -10, 200],
+		"comment": "Date Test"},
+
+		{"date": "2025-05-01",
+		"Sensor1":[0, 0, -10, 600],
+		"comment": "Date Test2"}
+	],
 
 	"default":{"Sensor1":[0, 0, -1, 4096],
 		       "comment": "default"}
