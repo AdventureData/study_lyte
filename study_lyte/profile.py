@@ -96,7 +96,7 @@ class GenericProfileV6:
         Args:
             ext_calibrations: External collection of calibrations
         """
-        cal = ext_calibrations.from_serial(self.serial_number)
+        cal = ext_calibrations.from_serial(self.serial_number, date=self.datetime)
         self._calibration = cal.calibration
 
     @property
