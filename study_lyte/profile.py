@@ -13,6 +13,9 @@ from .depth import AccelerometerDepth, BarometerDepth
 from .logging import setup_log
 from .calibrations import Calibrations
 import logging
+
+from .plotting import plot_ts
+
 setup_log()
 
 LOG = logging.getLogger('study_lyte.profile')
@@ -360,6 +363,9 @@ class LyteProfileV6(GenericProfileV6):
             if self.motion_detect_name != Sensor.UNAVAILABLE:
                 # Remove gravity
                 self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name])
+                # from study_lyte.plotting import plot_ts
+                # ax = plot_ts(self._acceleration, show=False)
+                # ax = plot_ts(self.raw[self.motion_detect_name], ax=ax, show=True)
             else:
                 self._acceleration = Sensor.UNAVAILABLE
         return self._acceleration
@@ -390,6 +396,7 @@ class LyteProfileV6(GenericProfileV6):
                     baro = baro.set_index('time')['baro']
 
             if self.accelerometer != Sensor.UNAVAILABLE:
+                # TODO: WHATS GOING ON HERE?
                 idx = abs(self.accelerometer.depth - -1).argmin()
             else:
                 idx = self.start.index
@@ -405,6 +412,7 @@ class LyteProfileV6(GenericProfileV6):
             if self.motion_detect_name != Sensor.UNAVAILABLE and self.depth_method != 'barometer':
                 # User requested fused
                 if self.depth_method == 'fused':
+                    LOG.info("Using fused sensors to compute depth.")
                     depth = self.fuse_depths(self.accelerometer.depth.values.copy(),
                                                    self.barometer.depth.values.copy(),
                                                    error=self.error.index)
@@ -419,11 +427,16 @@ class LyteProfileV6(GenericProfileV6):
 
                     else:
                         self._depth = pd.Series(data=depth, index=self.raw['time'])
+
                 # User requested accelerometer
                 elif self.depth_method == 'accelerometer':
+                    LOG.info("Using accelerometer alone to compute depth.")
                     self._depth = self.accelerometer.depth
             else:
+                LOG.info("Using barometer alone to compute depth.")
                 self._depth = self.barometer.depth
+
+            # Assign positions of each event detected
             self.assign_event_depths()
 
         return self._depth
@@ -590,6 +603,8 @@ class LyteProfileV6(GenericProfileV6):
         profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
         profile_string += msg.format('Ground Strike:', 'True' if self.ground.time is not None else 'False')
         profile_string += msg.format('Upward Motion:', "True" if self.has_upward_motion else "False")
+        if self.angle != Sensor.UNAVAILABLE:
+            profile_string += msg.format('Angle:', int(self.angle))
         profile_string += msg.format('Errors:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
 
         profile_string += '-' * (len(header)-2) + '\n'
@@ -629,7 +644,10 @@ class LyteProfileV6(GenericProfileV6):
         sensor_diff = abs(acc_bottom) - abs(baro_bottom)
         delta = 0.572 * abs(acc_bottom) + 0.308 * abs(baro_bottom) + 0.264 * sensor_diff + 8.916
         # delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
-        avg = (avg / avg_bottom) * -1*delta
+        avg = (avg / avg_bottom) * -1 * delta
+        # from study_lyte.plotting import plot_ts
+        # ax = plot_ts(avg, show=True)
+
         return avg
 
     @property
@@ -639,7 +657,7 @@ class LyteProfileV6(GenericProfileV6):
         """
         if self._angle is None and self.acceleration_names != Sensor.UNAVAILABLE:
             if 'Y-Axis' in self.acceleration_names:
-                data = self.raw[self.acceleration_names].iloc[0:self.start.index].mean(axis=0)
+                data = self.raw[self.acceleration_names].iloc[0:self.start.index + 1].mean(axis=0)
                 magn = data.pow(2).sum()**0.5
                 self._angle = np.arccos(abs(data['Y-Axis']) / magn) * 180 / np.pi
             else:
