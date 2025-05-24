@@ -233,6 +233,9 @@ class TestLyteProfile:
         ("open_air.csv", 'fused', -10),
         # Test serial number not found
         ("mores_20230119.csv", 'fused', -1),
+        # Tests the date based calibration serial in the profile
+        ("angled_measurement.csv", 'fused', -10),
+
     ])
     def test_set_calibration(self, data_dir, profile,filename, depth_method, expected):
         p = Path(join(data_dir,'calibrations.json'))

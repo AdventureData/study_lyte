@@ -37,7 +37,7 @@ class Calibrations:
         with open(filename, mode='r') as fp:
             self._info = json.load(fp)
 
-    def from_serial(self, serial:str, date=None) -> Calibration:
+    def from_serial(self, serial:str, date: datetime=None) -> Calibration:
         """ Build data object from the calibration result """
         calibrations = self._info.get(serial)
         cal = None
