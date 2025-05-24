@@ -28,6 +28,9 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     # Convert from g's to m/s2
     g = -9.81
     acc = acceleration_df[acceleration_columns].mul(g)
+    # from study_lyte.plotting import plot_ts
+    # ax = plot_ts(acc, show=False)
+    # ax = plot_ts(acceleration_df[acceleration_columns].mul(9.81), show=True, ax=ax)
 
     # Calculate position
     position_vec = {}
@@ -176,7 +179,7 @@ class DepthTimeseries:
 
     @property
     def velocity_range(self):
-        """min, max of the absulute probe velocity during motion"""
+        """min, max of the absolute probe velocity during motion"""
         if self._velocity_range is None:
             minimum = np.min(self.velocity.iloc[self.start_idx:self.stop_idx].abs())
             self._velocity_range = SimpleNamespace(min=minimum, max=self.max_velocity)
@@ -229,6 +232,7 @@ class DepthTimeseries:
                 coarse = data.groupby(data.index // 200).first()
             else:
                 coarse = data
+
             # loop and find any values greater than the current value
             for i, v in enumerate(coarse):
                 upward = np.any(coarse.iloc[i:] > v + 5)
@@ -243,6 +247,7 @@ class BarometerDepth(DepthTimeseries):
     def __init__(self, *args, angle=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.angle = angle
+
     @property
     def depth(self):
         if self._depth is None:
@@ -259,11 +264,14 @@ class BarometerDepth(DepthTimeseries):
 
 
 class AccelerometerDepth(DepthTimeseries):
+
     @property
     def depth(self):
         if self._depth is None:
             valid = ~np.isnan(self.raw)
             self._depth = get_depth_from_acceleration(self.raw[valid])[self.raw.name]
+            # Flatten out the depth at the end
             self._depth.iloc[self.stop_idx:] = self._depth.iloc[self.stop_idx]
+            self._depth = self._depth - self._depth.iloc[self.origin]
 
         return self._depth
