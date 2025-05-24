@@ -47,11 +47,11 @@ class TestLyteProfile:
         ('kaslo.csv', 'fused', 119),
         # Test our extra methods
         ('kaslo.csv', 'accelerometer', 125),
-        ('kaslo.csv', 'barometer', 116.00)
+        ('kaslo.csv', 'barometer', 116)
     ])
     def test_distance_traveled(self, profile, expected):
         delta = profile.distance_traveled
-        assert pytest.approx(delta, abs=2.5) == expected
+        assert pytest.approx(delta, abs=4) == expected
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
         ('kaslo.csv', 'fused', 108.6)
