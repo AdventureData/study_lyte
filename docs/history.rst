@@ -70,4 +70,9 @@ Initial Development (2022-01-29)
 --------------------------------
 * Calibration json addition 
 * Improved merge technique for pandas 2.0.0
-  
+
+0.10.0 (2025-05-24)
+--------------------------------
+* Added multi calibration with dates
+* Added more logging around depths
+* Improved missing calibration handling
