@@ -14,7 +14,6 @@ from .logging import setup_log
 from .calibrations import Calibrations
 import logging
 
-from .plotting import plot_ts
 
 setup_log()
 
