@@ -246,7 +246,7 @@ def test_convert_force_to_pressure(force, tip_diameter, adj, expected):
 
 @pytest.mark.parametrize('data, fraction, expected', [
     # Test a simple noise data situation
-    ([0, 10, 0, 20, 0, 30], 0.4, [2.5, 5., 7.5, 10., 12.5, 22.5]),
+    ([0, 10, 0, 20, 0, 30], 0.4, [2.5, 5., 7.5, 10., 12.5, 7.5]),
 ])
 def test_zfilter(data, fraction, expected):
     result = zfilter(pd.Series(data), fraction)

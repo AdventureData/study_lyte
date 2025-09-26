@@ -36,6 +36,7 @@ class Sensor(Enum):
     UNAVAILABLE = -1
     UNINTERPRETABLE = -2
 
+
 class GenericProfileV6:
     def __init__(self, filename, surface_detection_offset=4.5, calibration=None,
              tip_diameter_mm=5):

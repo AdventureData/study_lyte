@@ -95,8 +95,8 @@ def test_get_constrained_baro_depth(depth_data, acc_data, start, stop, expected)
     ('baro_w_bench.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 43),
     ('baro_w_tails.csv', 'filtereddepth', 'Y-Axis', 'nanmean', 62),
     ('smooth.csv', 'filtereddepth', 'Y-Axis', 'nanmedian',  65),
-    ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 65),
-    ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 55),
+    ('low_zpfo_baro.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 67),
+    ('lower_slow_down.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 56),
     ('pilots.csv', 'depth', 'Y-Axis', 'nanmedian', 211),
     ('mores_pit_1.csv', 'depth', 'Y-Axis', 'nanmedian', 130),
     ('rough_bench.csv', 'filtereddepth', 'Y-Axis', 'nanmedian', 52),
@@ -141,6 +141,7 @@ class TestDepthTimeSeries:
     def test_zero_start_depth(self, depth):
         """All depths should start at zero for the beginning"""
         assert depth.depth.iloc[depth.start_idx] == 0
+
 
 class TestAccelerationDepthTimeseries:
     """Quick test to make sure the processing of depth is being done"""

@@ -1,11 +1,35 @@
 import pandas as pd
-from scipy.integrate import cumulative_trapezoid
 import numpy as np
 from types import SimpleNamespace
 
 from .decorators import time_series
 from .detect import nearest_peak
 from .adjustments import zfilter
+
+
+def cumulative_trapezoid(y, x=None, initial=0):
+    """
+    Numpy-only cumulative trapezoidal integration.
+    Args:
+        y: array-like, values to integrate
+        x: array-like, sample points corresponding to y (optional)
+        initial: value to prepend to the result (default 0)
+    Returns:
+        cumulative integral array
+    """
+    y = np.asarray(y)
+    if x is None:
+        dx = 1.0
+        x = np.arange(len(y))
+    else:
+        x = np.asarray(x)
+        dx = np.diff(x)
+    # Calculate area for each interval
+    area = (y[:-1] + y[1:]) / 2 * dx
+    # Cumulative sum and prepend initial value
+    result = np.concatenate([[initial], np.cumsum(area)])
+    return result
+
 
 @time_series
 def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:

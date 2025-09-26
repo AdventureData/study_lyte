@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import find_peaks, argrelextrema
+from scipy.signal import argrelextrema
 
 from .adjustments import (get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction, get_neutral_bias_at_index,zfilter)
 from .decorators import directional
@@ -11,6 +11,25 @@ def find_nearest_value_index(search_value, series):
     """
     idx = np.abs(search_value - series).argmin()
     return idx
+
+
+def find_peaks(arr, height=None, distance=1):
+    """
+    Basic replacement for scipy.signal.find_peaks.
+    Finds indices where arr[i] > arr[i-1] and arr[i] > arr[i+1].
+    Supports optional height and minimum distance between peaks.
+    """
+    peaks = []
+    arr = np.asarray(arr)
+    for i in range(1, len(arr) - 1):
+        if arr[i] > arr[i - 1] and arr[i] > arr[i + 1]:
+            if height is not None and arr[i] < height:
+                continue
+            if peaks and (i - peaks[-1]) < distance:
+                continue
+            peaks.append(i)
+    return np.array(peaks), arr[peaks]
+
 
 def first_peak(arr, default_index=1, **find_peak_kwargs):
     """
@@ -35,9 +54,21 @@ def nearest_peak(arr, nearest_to_index, default_index=0, **find_peak_kwargs):
     return nearest_val
 
 
+def find_valleys(arr):
+    """
+    Finds indices where arr[i] < arr[i-1] and arr[i] < arr[i+1].
+    """
+    arr = np.asarray(arr)
+    valleys = []
+    for i in range(1, len(arr) - 1):
+        if arr[i] < arr[i - 1] and arr[i] < arr[i + 1]:
+            valleys.append(i)
+    return np.array(valleys)
+
+
 def nearest_valley(arr, nearest_to_index, default_index=1):
     """Find the nearest valley closest to a designated point"""
-    valleys = argrelextrema(arr, np.less)[0]
+    valleys = find_valleys(arr)
     if len(valleys) > 0:
         nearest_val = valleys[(np.abs(valleys - nearest_to_index)).argmin()]
     else:
