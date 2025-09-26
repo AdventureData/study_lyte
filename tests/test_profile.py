@@ -2,9 +2,9 @@ import pytest
 from os.path import join
 from pathlib import Path
 from study_lyte.calibrations import Calibrations
-from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor
+from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor, GISPoint
 from operator import attrgetter
-from shapely.geometry import Point
+
 
 class TestLyteProfile:
 
@@ -202,7 +202,7 @@ class TestLyteProfile:
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
         # Parseable point
-        ('ground_touch_and_go.csv','fused', Point(-115.693, 43.961)),
+        ('ground_touch_and_go.csv','fused', GISPoint(-115.693, 43.961)),
         # no point available
         ('egrip.csv', 'fused', Sensor.UNAVAILABLE),
     ])

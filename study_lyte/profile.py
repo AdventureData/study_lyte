@@ -4,7 +4,6 @@ import pandas as pd
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
-from shapely.geometry import Point
 
 from . io import read_data, find_metadata
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
@@ -25,6 +24,12 @@ class Event:
     index: int
     depth: float # centimeters
     time: float # seconds
+
+@dataclass
+class GISPoint:
+    x: float
+    y: float
+
 
 class Sensor(Enum):
     """Enum for various scenarios that come up with variations of data"""
@@ -277,10 +282,10 @@ class GenericProfileV6:
 
     @property
     def point(self):
-        """Return shapely geometry point of the measurement location in EPSG 4326"""
+        """Return custom gis point of the measurement location in EPSG 4326"""
         if self._point is None:
             if all([k in self.metadata.keys() for k in ['Latitude', 'Longitude']]):
-                self._point = Point(float(self.metadata['Longitude']), float(self.metadata['Latitude']))
+                self._point = GISPoint(float(self.metadata['Longitude']), float(self.metadata['Latitude']))
             else:
                 self._point = Sensor.UNAVAILABLE
 
