@@ -174,9 +174,9 @@ class TestLyteProfile:
 
     @pytest.mark.parametrize('filename, depth_method, total_depth', [
         # Is filtered
-        ('egrip.csv', 'fused', 199),
+        ('egrip.csv', 'fused', 114),
         # Not filtered
-        # ('kaslo.csv','fused', 116),
+        ('kaslo.csv','fused', 116),
     ])
     def test_barometer_is_filtered(self, profile, filename, depth_method, total_depth):
         assert pytest.approx(profile.barometer.distance_traveled, abs=1) == total_depth

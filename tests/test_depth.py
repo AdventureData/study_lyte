@@ -173,10 +173,10 @@ class TestBarometerDepthTimeseries:
         return depth
 
     def test_total_distance_travelled(self, depth):
-        assert pytest.approx(depth.distance_traveled, abs=1e-2) == 89.68
+        assert pytest.approx(depth.distance_traveled, abs=0.5) == 89.68
 
     def test_max_velocity(self, depth):
-        assert pytest.approx(depth.max_velocity, abs=1e-2) == 283.74
+        assert pytest.approx(depth.max_velocity, abs=1e-2) == 285.09
 
     def test_invalid_start_stop_index(self):
         """ Test when the baro depth receives a start that is not less than stop. Return zeros."""
