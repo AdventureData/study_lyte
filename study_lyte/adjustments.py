@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-from scipy.signal import lfilter
 
 def get_points_from_fraction(n_samples, fraction, maximum=None):
     """
@@ -311,15 +310,16 @@ def convert_force_to_pressure(force, tip_diameter_m, geom_adj=1):
     # Adjust for shape and convert to kPa
     return pressure * geom_adj / 1000
 
+
 def zfilter(series, fraction):
     """
-    Zero phase filter
+    Zero phase filter using numpy only.
     """
     window = get_points_from_fraction(len(series), fraction)
     filter_coefficients = np.ones(window) / window
 
-    # Apply the filter forward
-    zi = np.zeros(filter_coefficients.shape[0]-1) #lfilter_zi(filter_coefficients, 1)
-    filtered, zf = lfilter(filter_coefficients, 1, series, zi=zi)
-    filtered = lfilter(filter_coefficients, 1, filtered[::-1], zi=zf)[0][::-1]
+    # Forward filtering
+    filtered = np.convolve(series, filter_coefficients, mode='same')
+    # Backward filtering
+    filtered = np.convolve(filtered[::-1], filter_coefficients, mode='same')[::-1]
     return filtered

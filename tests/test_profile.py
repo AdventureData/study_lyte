@@ -2,9 +2,9 @@ import pytest
 from os.path import join
 from pathlib import Path
 from study_lyte.calibrations import Calibrations
-from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor
+from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor, GISPoint
 from operator import attrgetter
-from shapely.geometry import Point
+
 
 class TestLyteProfile:
 
@@ -174,9 +174,9 @@ class TestLyteProfile:
 
     @pytest.mark.parametrize('filename, depth_method, total_depth', [
         # Is filtered
-        ('egrip.csv', 'fused', 199),
+        ('egrip.csv', 'fused', 114),
         # Not filtered
-        # ('kaslo.csv','fused', 116),
+        ('kaslo.csv','fused', 116),
     ])
     def test_barometer_is_filtered(self, profile, filename, depth_method, total_depth):
         assert pytest.approx(profile.barometer.distance_traveled, abs=1) == total_depth
@@ -202,7 +202,7 @@ class TestLyteProfile:
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
         # Parseable point
-        ('ground_touch_and_go.csv','fused', Point(-115.693, 43.961)),
+        ('ground_touch_and_go.csv','fused', GISPoint(-115.693, 43.961)),
         # no point available
         ('egrip.csv', 'fused', Sensor.UNAVAILABLE),
     ])

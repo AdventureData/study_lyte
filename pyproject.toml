@@ -17,8 +17,7 @@ classifiers = [
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10'
 ]
-dependencies = [ "pandas > 2.0.0", "pandas < 3.0.0",
-                "scipy", "shapely"]
+dependencies = [ "pandas > 2.0.0", "pandas < 3.0.0"]
 
 [project.optional-dependencies]
 dev = [

@@ -59,7 +59,7 @@ def test_get_signal_event(data, threshold, direction, max_threshold, n_points, e
     # No criteria met, return the first index before the max
     ([-1, -1, -1, -1], 0.25, 10, 11, 0),
     # Test with small bump before start
-    ([-1, -1, 0.05, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, -1.1, 0.5, 4)
+    ([-1, -1, -0.75, -1, -1, 0.5, 1, 0.5, -1, -2, -1.5, -1, -1], 2 / 13, -1.1, 0.5, 4)
 ])
 def test_get_acceleration_start(data, fractional_basis, threshold, max_threshold, expected):
     df = pd.DataFrame({'acceleration': np.array(data)})

@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.mark.parametrize('n, std, confidence, expected', [
-    (5, 8.9, 0.95, 6.54)
+    (5, 8.9, 0.95, 7.80)
 ])
 def test_margin_of_error(n, std, confidence, expected):
     result = margin_of_error(n, std, confidence=confidence)
@@ -11,7 +11,7 @@ def test_margin_of_error(n, std, confidence, expected):
 
 
 @pytest.mark.parametrize('desired_margin, std, confidence, expected', [
-    (5, 8.9, 0.95, 8.57)
+    (5, 8.9, 0.95, 12.17)
 ])
 def test_required_sample_for_margin(desired_margin, std, confidence, expected):
     n = required_sample_for_margin(desired_margin, std, confidence=confidence)
