@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.signal import argrelextrema
 
 from .adjustments import (get_neutral_bias_at_border, get_normalized_at_border, get_points_from_fraction, get_neutral_bias_at_index,zfilter)
 from .decorators import directional
