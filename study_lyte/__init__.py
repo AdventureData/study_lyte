@@ -2,4 +2,4 @@
 
 __author__ = """Micah Johnson """
 __email__ = 'info@adventuredata.com'
-__version__ = '0.10.1'
+__version__ = '0.10.2'
