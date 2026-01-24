@@ -175,12 +175,15 @@ def remove_ambient(active, ambient, min_ambient_range=100, direction='forward'):
     return clean
 
 
-def apply_calibration(series, coefficients, minimum=None, maximum=None):
+def apply_calibration(series, coefficients, minimum=None, maximum=None, tare=False):
     """
     Apply any calibration using poly1d
     """
     poly = np.poly1d(coefficients)
     result = poly(series)
+    if tare:
+        result = result - np.nanmedian(result[0:50])
+
     if maximum is not None:
         result[result > maximum] = maximum
     if minimum is not None:

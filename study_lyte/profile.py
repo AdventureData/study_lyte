@@ -81,11 +81,12 @@ class GenericProfileV6:
         self._error = None
         self._ground = None
 
-    def assign_event_depths(self):
+    def assign_event_depths(self, depth:pd.Series):
         """" Enable depth assignment post depth realization """
         self.events
-        for event in [self._start, self._stop, self._surface.nir, self._surface.force]:
-            event.depth = self.depth.iloc[event.index]
+        for event in [self._start, self._stop]:
+            event.depth = depth.iloc[event.index]
+        self._surface = self.assign_surface_depths(depth)
 
     @property
     def serial_number(self):
@@ -178,8 +179,7 @@ class GenericProfileV6:
             force = self.raw['Sensor1'].values
             if self.calibration is not None:
                 if 'Sensor1' in self.calibration.keys():
-                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=0, maximum=15000)
-                    force = force - np.nanmean(force[0:20])
+                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=None, maximum=15000, tare=True)
 
             self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
             # prefer a ground index if available
@@ -422,14 +422,25 @@ class LyteProfileV6(GenericProfileV6):
                                                    self.barometer.depth.values.copy(),
                                                    error=self.error.index)
 
-                    if depth.min() < -230 and self.accelerometer.depth.min() > -230:
-                        LOG.warning('Fused depth result produced a profile > 230 cm. Defaulting to accelerometer')
-                        self._depth = self.accelerometer.depth
+                    # Failed fusion
+                    unrealistic_depth = 230
+                    travel = abs(depth.max() - depth.min())
 
-                    elif depth.min() < -230 and self.barometer.depth.min() > -230:
-                        LOG.warning('Fused and accelerometer depth resulted in a profile > 230 cm. Defaulting to barometer')
-                        self._depth = self.barometer.depth
+                    # Unrealistic depth
+                    if travel > unrealistic_depth:
+                        warn_msg = f'Fused depth result produced a profile > {unrealistic_depth} cm.'
 
+                        # Check if acceleration alone is reasonable
+                        if  self.accelerometer.distance_traveled < unrealistic_depth:
+                            LOG.warning(warn_msg + ' Defaulting to accelerometer')
+                            self._depth = self.accelerometer.depth
+
+                        # Check if barometer alone is reasonable
+                        elif self.barometer.distance_traveled < unrealistic_depth:
+                            LOG.warning(warn_msg + ' Defaulting to barometer')
+                            self._depth = self.barometer.depth
+                        else:
+                            LOG.error(warn_msg + ' Both sensors unrealistic, using data as is.')
                     else:
                         self._depth = pd.Series(data=depth, index=self.raw['time'])
 
@@ -442,7 +453,7 @@ class LyteProfileV6(GenericProfileV6):
                 self._depth = self.barometer.depth
 
             # Assign positions of each event detected
-            self.assign_event_depths()
+            self.assign_event_depths(self._depth)
 
         return self._depth
 
@@ -479,6 +490,38 @@ class LyteProfileV6(GenericProfileV6):
 
         return self._stop
 
+    def assign_surface_depths(self, depth:pd.Series):
+        # Event according the NIR sensors
+        idx = self.surface.nir.index
+        self._surface.nir.depth = depth.iloc[idx]
+
+        # Event according to the force sensor
+        force_surface_depth = self._surface.nir.depth  + self.surface_detection_offset
+        f_idx = abs(depth - force_surface_depth).argmin()
+        # Retrieve force estimated start
+        f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
+        f_start = f_start or f_idx
+
+        # If the force start is before the NIR start then adjust
+        if f_start < self.start.index:
+            LOG.info(f'Choosing motion start ({self.start.index}) over force start ({f_start})...')
+            f_idx = self.start.index
+            force_surface_depth = depth.iloc[f_idx]
+
+        elif f_start < f_idx:
+            LOG.info(f'Choosing force start ({f_start}) over nir derived ({f_idx})...')
+            f_idx = f_start
+            force_surface_depth = depth.iloc[f_idx]
+
+        self._surface.force.index = f_idx
+        self._surface.force.depth = depth.iloc[f_idx]
+        self._surface.force.time = self.raw['time'].iloc[f_idx]
+
+        # Adjust surface detection to modify the start if there is conflict.
+        if self._surface.nir.time < self.start.time:
+            self._start = self._surface.nir
+            self._start.name = 'start'
+
     @property
     def surface(self):
         """
@@ -490,34 +533,10 @@ class LyteProfileV6(GenericProfileV6):
             if idx == 0:
                 LOG.warning("Unable to find snow surface, defaulting to first data point")
             # Event according the NIR sensors
-            depth = self.depth.iloc[idx]
-            nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
-
-            # Event according to the force sensor
-            force_surface_depth = depth + self.surface_detection_offset
-            f_idx = abs(self.depth - force_surface_depth).argmin()
-            # Retrieve force estimated start
-            f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
-            f_start = f_start or f_idx
-
-            # If the force start is before the NIR start then adjust
-            if f_start < self.start.index:
-                LOG.info(f'Choosing motion start ({self.start.index}) over force start ({f_start})...')
-                f_idx = self.start.index
-                force_surface_depth = self.depth.iloc[f_idx]
-
-            elif f_start < f_idx:
-                LOG.info(f'Choosing force start ({f_start}) over nir derived ({f_idx})...')
-                f_idx = f_start
-                force_surface_depth = self.depth.iloc[f_idx]
-
-            force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
+            nir = Event(name='surface', index=idx, depth=None, time=self.raw['time'].iloc[idx])
+            # Force events placeholder
+            force = Event(name='surface', index=None, depth=None, time=None)
             self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
-
-            # Allow surface detection to modify the start if there is conflict.
-            if nir.time < self.start.time:
-                self._start = nir
-                self._start.name = 'start'
 
         return self._surface
 
@@ -648,10 +667,7 @@ class LyteProfileV6(GenericProfileV6):
         # Scale total
         sensor_diff = abs(acc_bottom) - abs(baro_bottom)
         delta = 0.572 * abs(acc_bottom) + 0.308 * abs(baro_bottom) + 0.264 * sensor_diff + 8.916
-        # delta = (acc_bottom * (5 - scale) + baro_bottom * scale) / 5
         avg = (avg / avg_bottom) * -1 * delta
-        # from study_lyte.plotting import plot_ts
-        # ax = plot_ts(avg, show=True)
 
         return avg
 
