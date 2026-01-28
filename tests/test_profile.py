@@ -29,7 +29,7 @@ class TestLyteProfile:
 
 
     @pytest.mark.parametrize('filename, depth_method, expected', [
-        ('kaslo.csv', 'fused', 11641)
+        ('kaslo.csv', 'fused', 12565)
     ])
     def test_nir_surface_property(self, profile, filename, depth_method, expected):
         nir_surface = profile.surface.nir.index

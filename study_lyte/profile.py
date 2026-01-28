@@ -4,7 +4,7 @@ import pandas as pd
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
-
+from functools import cached_property
 from . io import read_data, find_metadata
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
@@ -152,6 +152,11 @@ class GenericProfileV6:
 
         return self._meta
 
+    @cached_property
+    def end(self):
+        """End of the data used for analysis, prefer ground if detected"""
+        return self.stop.index if self.ground.index is None else self.ground.index
+
     @property
     def nir(self):
         """
@@ -160,9 +165,8 @@ class GenericProfileV6:
         if self._nir is None:
             self._nir = self.raw[["Sensor2", "Sensor3", "nir"]]
             self._nir['depth'] = self.depth.values
-            end = self.stop.index if self.ground.index is None else self.ground.index
-            if self.surface.nir.index < end:
-                self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
+            if self.surface.nir.index < self.end:
+                self._nir = self._nir.iloc[self.surface.nir.index:self.end].reset_index()
                 self._nir = self._nir.drop(columns='index')
                 self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
             else:
@@ -182,9 +186,7 @@ class GenericProfileV6:
                     force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=None, maximum=15000, tare=True)
 
             self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
-            # prefer a ground index if available
-            end = self.stop.index if self.ground.index is None else self.ground.index
-            self._force = self._force.iloc[self.surface.force.index:end].reset_index()
+            self._force = self._force.iloc[self.surface.force.index:self.end].reset_index()
             self._force = self._force.drop(columns='index')
             if not self._force.empty:
                 self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
@@ -529,13 +531,33 @@ class LyteProfileV6(GenericProfileV6):
         """
         if self._surface is None:
             # Call to populate nir in raw
-            idx = get_nir_surface(self.raw['Sensor3'])
+            idx = get_nir_surface(self.raw['nir'])
             if idx == 0:
                 LOG.warning("Unable to find snow surface, defaulting to first data point")
             # Event according the NIR sensors
-            nir = Event(name='surface', index=idx, depth=None, time=self.raw['time'].iloc[idx])
-            # Force events placeholder
-            force = Event(name='surface', index=None, depth=None, time=None)
+            depth = self.depth.iloc[idx]
+            nir = Event(name='surface', index=idx, depth=depth, time=self.raw['time'].iloc[idx])
+
+            # Event according to the force sensor
+            force_surface_depth = depth + self.surface_detection_offset
+            f_idx = abs(self.depth - force_surface_depth).argmin()
+
+            # Retrieve force estimated start
+            f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
+            f_start = f_start or f_idx
+
+            # If the force start is before the NIR start then adjust
+            if f_start < self.start.index:
+                LOG.info(f'Choosing motion start ({self.start.index}) over force start ({f_start})...')
+                f_idx = self.start.index
+                force_surface_depth = self.depth.iloc[f_idx]
+
+            elif f_start < f_idx:
+                LOG.info(f'Choosing force start ({f_start}) over nir derived ({f_idx})...')
+                f_idx = f_start
+                force_surface_depth = self.depth.iloc[f_idx]
+
+            force = Event(name='surface', index=f_idx, depth=force_surface_depth, time=self.raw['time'].iloc[f_idx])
             self._surface = SimpleNamespace(name='surface', nir=nir, force=force)
 
         return self._surface
