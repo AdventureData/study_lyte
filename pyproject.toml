@@ -8,14 +8,16 @@ version = "0.10.2"
 description = "Analysis software for the Lyte probe, a digital penetrometer for studying snow"
 keywords = ["snow penetrometer", "smart probe", "digital penetrometer", 'lyte probe', "avalanches", "snow densiy"]
 readme = "README.rst"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 classifiers = [
     'Development Status :: 2 - Pre-Alpha',
     'Intended Audience :: Developers',
     'Natural Language :: English',
     'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10'
-    'Programming Language :: Python :: 3.12'
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+
 ]
 dependencies = [ "numpy > 2.0.0", "pandas > 2.0.0", "pandas < 3.0.0"]
 
