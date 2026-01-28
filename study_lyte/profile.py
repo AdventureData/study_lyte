@@ -442,7 +442,8 @@ class LyteProfileV6(GenericProfileV6):
                             LOG.warning(warn_msg + ' Defaulting to barometer')
                             self._depth = self.barometer.depth
                         else:
-                            LOG.error(warn_msg + ' Both sensors unrealistic, using data as is.')
+                            LOG.error(warn_msg + ' Alternate sensors also unrealistic, using data as is.')
+                            self._depth = pd.Series(data=depth, index=self.raw['time'])
                     else:
                         self._depth = pd.Series(data=depth, index=self.raw['time'])
 
