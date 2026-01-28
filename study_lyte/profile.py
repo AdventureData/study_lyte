@@ -4,7 +4,7 @@ import pandas as pd
 from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
-
+from functools import cached_property
 from . io import read_data, find_metadata
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
@@ -151,6 +151,11 @@ class GenericProfileV6:
 
         return self._meta
 
+    @cached_property
+    def end(self):
+        """End of the data used for analysis, prefer ground if detected"""
+        return self.stop.index if self.ground.index is None else self.ground.index
+
     @property
     def nir(self):
         """
@@ -159,9 +164,8 @@ class GenericProfileV6:
         if self._nir is None:
             self._nir = self.raw[["Sensor2", "Sensor3", "nir"]]
             self._nir['depth'] = self.depth.values
-            end = self.stop.index if self.ground.index is None else self.ground.index
-            if self.surface.nir.index < end:
-                self._nir = self._nir.iloc[self.surface.nir.index:end].reset_index()
+            if self.surface.nir.index < self.end:
+                self._nir = self._nir.iloc[self.surface.nir.index:self.end].reset_index()
                 self._nir = self._nir.drop(columns='index')
                 self._nir['depth'] = self._nir['depth'] - self._nir['depth'].iloc[0]
             else:
@@ -182,9 +186,7 @@ class GenericProfileV6:
                     force = force - np.nanmean(force[0:20])
 
             self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
-            # prefer a ground index if available
-            end = self.stop.index if self.ground.index is None else self.ground.index
-            self._force = self._force.iloc[self.surface.force.index:end].reset_index()
+            self._force = self._force.iloc[self.surface.force.index:self.end].reset_index()
             self._force = self._force.drop(columns='index')
             if not self._force.empty:
                 self._force['depth'] = self._force['depth'] - self._force['depth'].iloc[0]
@@ -486,7 +488,7 @@ class LyteProfileV6(GenericProfileV6):
         """
         if self._surface is None:
             # Call to populate nir in raw
-            idx = get_nir_surface(self.raw['Sensor3'])
+            idx = get_nir_surface(self.raw['nir'])
             if idx == 0:
                 LOG.warning("Unable to find snow surface, defaulting to first data point")
             # Event according the NIR sensors
@@ -496,6 +498,7 @@ class LyteProfileV6(GenericProfileV6):
             # Event according to the force sensor
             force_surface_depth = depth + self.surface_detection_offset
             f_idx = abs(self.depth - force_surface_depth).argmin()
+
             # Retrieve force estimated start
             f_start = get_sensor_start(self.raw['Sensor1'], max_threshold=0.02, threshold=-0.02)
             f_start = f_start or f_idx
