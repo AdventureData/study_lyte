@@ -83,6 +83,7 @@ def poly_function(elapsed, amplitude=4096, frequency=1):
 
 
 @pytest.mark.parametrize('data1_hz, data2_hz, desired_hz', [
+    # Typical usage
     (75, 100, 16000),
     (100, 75, 100),
 
@@ -108,8 +109,10 @@ def test_merge_on_to_time(data1_hz, data2_hz, desired_hz):
     # Check timing on both dataframes
     assert df1['data1'].idxmax() == pytest.approx(final['data1'].idxmax(), abs=3e-2)
     assert df1['data1'].idxmin() == pytest.approx(final['data1'].idxmin(), abs=3e-2)
+
     # Confirm the handling of multiple datasets
     assert len(final.columns) == 2
+
     # Confirm an exact match of length of data
     assert len(final['data1'][~np.isnan(final['data1'])]) == len(desired)
 
