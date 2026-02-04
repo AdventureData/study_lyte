@@ -1,4 +1,5 @@
-from typing import Tuple
+from pathlib import Path
+from typing import Tuple, Union
 import pandas as pd
 import numpy as np
 
@@ -36,7 +37,7 @@ def read_data(f:str, metadata:dict, header_position:int) -> Tuple[pd.DataFrame, 
         df['time'] = np.linspace(0, n/sr, n)
     return df, metadata
 
-def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
+def read_csv(f: Union[str, Path]) -> Tuple[pd.DataFrame, dict]:
     """
     Reads any Lyte probe CSV and returns a dataframe
     and metadata dictionary from the header
