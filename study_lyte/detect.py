@@ -115,20 +115,14 @@ def get_signal_event(signal_series, threshold=0.001, search_direction='forward',
 
     # if we have results, find the first match with n points that meet the criteria
     if n_points > 1 and len(ind) > 0:
-        npnts = n_points - 1
-        id_diff = np.ones_like(ind) * 0
-        id_diff[1:] = (ind[1:] - ind[0:-1])
-        id_diff[0] = 1
-        id_diff = np.abs(id_diff)
-        spacing_ind = []
-
-        # Determine if the last n points are all 1 idx apart
-        for i, ix in enumerate(ind):
-            if i >= npnts:
-                test_arr = id_diff[i - npnts:i + 1]
-                if all(test_arr == 1):
-                    spacing_ind.append(ix)
-        ind = spacing_ind
+        # Vectorized consecutive point detection
+        diffs = np.diff(ind)
+        # Find runs of consecutive indices (diff == 1)
+        consecutive = np.concatenate([[False], diffs == 1])
+        # Count consecutive runs
+        for i in range(n_points - 2):
+            consecutive[1:] = consecutive[1:] & consecutive[:-1]
+        ind = ind[consecutive]
 
     # If no results are found, return the first index the series
     if len(ind) == 0:

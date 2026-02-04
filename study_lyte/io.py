@@ -1,4 +1,5 @@
-from typing import Tuple
+from pathlib import Path
+from typing import Tuple, Union
 import pandas as pd
 import numpy as np
 
@@ -24,19 +25,35 @@ def find_metadata(f:str) -> [int, dict]:
                 break
     return header_position, metadata
 
-def read_data(f:str, metadata:dict, header_position:int) -> Tuple[pd.DataFrame, dict]:
-    """Read just the csv to enable parsing metadata and header position separately"""
-    df = pd.read_csv(f, header=header_position)
-    # Drop any columns written with the plain index
-    df.drop(df.filter(regex="Unname"), axis=1, inplace=True)
 
-    if 'time' not in df and 'SAMPLE RATE' in metadata:
+def read_data(f: Union[str, Path], metadata: dict, header_position: int) -> Tuple[pd.DataFrame, dict]:
+    """
+    Reads just the data from the Lyte probe CSV file
+    Args:
+        f: Path to csv, or file buffer
+        metadata: Dictionary of metadata from the header
+        header_position: Line number where the header ends
+    Returns:
+        tuple:
+            **df**: pandas Dataframe
+            **metadata**: dictionary containing header info
+    """
+    # Use engine='c' explicitly and specify dtypes if known
+    df = pd.read_csv(f, header=header_position, engine='c')
+
+    # Faster column dropping - avoid regex
+    unnamed_cols = [c for c in df.columns if c.startswith('Unnamed')]
+    if unnamed_cols:
+        df.drop(columns=unnamed_cols, inplace=True)
+
+    if 'time' not in df.columns and 'SAMPLE RATE' in metadata:
         sr = int(metadata['SAMPLE RATE'])
         n = len(df)
-        df['time'] = np.linspace(0, n/sr, n)
+        df['time'] = np.linspace(0, n / sr, n)
     return df, metadata
 
-def read_csv(f: str) -> Tuple[pd.DataFrame, dict]:
+
+def read_csv(f: Union[str, Path]) -> Tuple[pd.DataFrame, dict]:
     """
     Reads any Lyte probe CSV and returns a dataframe
     and metadata dictionary from the header
