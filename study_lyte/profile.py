@@ -300,16 +300,13 @@ class GenericProfileV6:
         Bool indicating if upward motion was detected
         """
         if self._has_upward_motion is None:
-            self._has_upward_motion = False
-            # crop the depth data and down sample for speedy check
+            # crop the depth data and downsample for speedy check
             n = get_points_from_fraction(len(self.depth), 0.005)
-            coarse = self.depth.iloc[self.start.index:self.stop.index:n]
-            # loop and find any values greater than the current value
-            for i,v in coarse.items():
-                upward = np.any(coarse.loc[i:] > v + 5)
-                if upward:
-                    self._has_upward_motion = True
-                    break
+            data = self.depth.iloc[self.start.index:self.stop.index:n].values
+
+            # Vectorized: check if any point rises > 5 above the running minimum
+            cummin = np.minimum.accumulate(data)
+            self._has_upward_motion = bool(np.any(data - cummin > 5))
 
         return self._has_upward_motion
 
