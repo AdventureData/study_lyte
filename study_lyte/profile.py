@@ -366,10 +366,8 @@ class LyteProfileV6(GenericProfileV6):
         if self._acceleration is None:
             if self.motion_detect_name != Sensor.UNAVAILABLE:
                 # Remove gravity
-                self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name])
-                # from study_lyte.plotting import plot_ts
-                # ax = plot_ts(self._acceleration, show=False)
-                # ax = plot_ts(self.raw[self.motion_detect_name], ax=ax, show=True)
+                self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='backward')
+
             else:
                 self._acceleration = Sensor.UNAVAILABLE
         return self._acceleration
