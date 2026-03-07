@@ -52,6 +52,7 @@ def get_depth_from_acceleration(acceleration_df: pd.DataFrame) -> pd.DataFrame:
     # Convert from g's to m/s2
     g = -9.81
     acc = acceleration_df[acceleration_columns].mul(g)
+
     # from study_lyte.plotting import plot_ts
     # ax = plot_ts(acc, show=False)
     # ax = plot_ts(acceleration_df[acceleration_columns].mul(9.81), show=True, ax=ax)
@@ -149,7 +150,8 @@ def get_constrained_baro_depth(baro_depth, start, stop, method='nanmedian'):
 
     constrained = result.set_index('time')
     #assume_no_upward_motion(result[baro])
-    constrained = constrained - constrained.iloc[0]
+    if not constrained.empty:
+        constrained = constrained - constrained.iloc[0]
     return constrained
 
 
@@ -284,6 +286,7 @@ class BarometerDepth(DepthTimeseries):
 
             else:
                 self._depth = pd.Series(index=self.raw.index, data=np.zeros_like(self.raw.values))
+
         return self._depth
 
 
@@ -294,6 +297,7 @@ class AccelerometerDepth(DepthTimeseries):
         if self._depth is None:
             valid = ~np.isnan(self.raw)
             self._depth = get_depth_from_acceleration(self.raw[valid])[self.raw.name]
+
             # Flatten out the depth at the end
             self._depth.iloc[self.stop_idx:] = self._depth.iloc[self.stop_idx]
             self._depth = self._depth - self._depth.iloc[self.origin]

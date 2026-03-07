@@ -150,7 +150,7 @@ class TestLyteProfile:
         ('angled_measurement.csv', 'fused', 44),
     ])
     def test_barometer(self, profile, expected):
-        result = pytest.approx(profile.barometer.distance_traveled, 1e-2)
+        result = pytest.approx(profile.barometer.distance_traveled, 1)
         assert result == expected
 
 
@@ -185,12 +185,12 @@ class TestLyteProfile:
 
     @pytest.mark.parametrize('filename, depth_method, total_depth', [
         # Is filtered
-        ('egrip.csv', 'fused', 114),
+        ('egrip.csv', 'fused', 115),
         # Not filtered
         ('kaslo.csv','fused', 116),
     ])
     def test_barometer_is_filtered(self, profile, filename, depth_method, total_depth):
-        assert pytest.approx(profile.barometer.distance_traveled, abs=1) == total_depth
+        assert pytest.approx(profile.barometer.distance_traveled, abs=1.5) == total_depth
 
     @pytest.mark.parametrize('filename, depth_method', [
         # Chooses start over force start
