@@ -425,7 +425,7 @@ class LyteProfileV6(GenericProfileV6):
                     # Failed fusion
                     unrealistic_depth = 230
                     travel = abs(depth.max() - depth.min())
-                    print(np.isnan(travel))
+
                     # Unrealistic depth
                     if travel > unrealistic_depth or np.isnan(travel):
                         warn_msg = f'Fused depth result produced a profile > {unrealistic_depth} cm.'
