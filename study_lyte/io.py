@@ -89,4 +89,27 @@ def write_csv(df: pd.DataFrame, meta: dict, f: str) -> None:
     else:
         write_index = False
 
-    df.to_csv(f, mode='a', index=write_index)
+    # Format columns for cleaner output - round before writing
+    df_out = df.copy()
+
+    # 4 decimals for g measurements (accelerometer axes)
+    accel_cols = [c for c in ['X-Axis', 'Y-Axis', 'Z-Axis'] if c in df_out.columns]
+    for col in accel_cols:
+        df_out[col] = df_out[col].round(4)
+
+    # 6 decimals for 16kHz timing (62.5µs resolution)
+    if 'time' in df_out.columns:
+        df_out['time'] = df_out['time'].round(6)
+    elif 'time' in df_out.index.names:
+        df_out.index = df_out.index.round(6)
+
+    # 1 decimal for depth in cm (0.1cm resolution)
+    if 'depth' in df_out.columns:
+        df_out['depth'] = df_out['depth'].round(1)
+
+    # Sensor columns are integers
+    sensor_cols = [c for c in ['Sensor1', 'Sensor2', 'Sensor3', 'Sensor4'] if c in df_out.columns]
+    for col in sensor_cols:
+        df_out[col] = df_out[col].astype(int)
+
+    df_out.to_csv(f, mode='a', index=write_index)

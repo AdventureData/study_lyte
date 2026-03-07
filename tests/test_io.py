@@ -45,7 +45,7 @@ def out_file():
         os.remove(f)
 
 
-def test_write_csv(out_file):
+def test_write_csv_header(out_file):
     """
     Test the writing of a csv with metadata
     """
@@ -56,3 +56,21 @@ def test_write_csv(out_file):
     with open(out_file) as fp:
         txt = ''.join(fp.readlines())
     assert txt == 'model = 10\ndata\n1\n2\n3\n'
+
+@pytest.mark.parametrize("column_name, value, expected_output", [
+    ('X-Axis', 1.23456789, '1.2346'),
+    ('time', 0.0000625111, '6.3e-05'),
+    ('depth', 12.34567, '12.3'),
+    ('Sensor1', 123.0, '123')
+])
+def test_write_csv_format(out_file, column_name, value, expected_output):
+    """
+    Test the writing of a csv with metadata
+    """
+    meta = {}
+    df = DataFrame({column_name: [value]})
+    write_csv(df, meta, out_file)
+
+    with open(out_file) as fp:
+        txt = ''.join(fp.readlines())
+    assert txt.split('\n')[1] == expected_output
