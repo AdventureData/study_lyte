@@ -406,7 +406,7 @@ class LyteProfileV6(GenericProfileV6):
             else:
                 idx = self.start.index
 
-            angle = self.start_angle if self.has_multi_axis_acceleration else None
+            angle = self.end_angle if self.has_multi_axis_acceleration else None
             self._barometer = BarometerDepth(baro, idx, self.stop.index, angle=angle)
 
         return self._barometer
@@ -707,6 +707,7 @@ class LyteProfileV6(GenericProfileV6):
             if 'Y-Axis' in self.acceleration_names:
                 magn = self.raw[self.acceleration_names].pow(2).sum(axis=1) ** 0.5
                 angle = np.arccos(abs(self.raw[self.acceleration_names]['Y-Axis']) / magn) * 180 / np.pi
+                angle = pd.Series(angle.values, index=self.raw['time'])
         return angle
 
     @cached_property

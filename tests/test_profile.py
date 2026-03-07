@@ -224,6 +224,8 @@ class TestLyteProfile:
     @pytest.mark.parametrize('filename, depth_method, expected', [
         # Test report card doesn't error out when missing key features
         ("open_air.csv", 'fused', 0),
+        # Minimal acc info
+        ("kaslo.csv", 'fused', 0),
     ])
     def test_report_card(self, profile, filename, depth_method, expected):
         """Test we are parsing the point info"""
