@@ -183,7 +183,7 @@ class GenericProfileV6:
             force = self.raw['Sensor1'].values
             if self.calibration is not None:
                 if 'Sensor1' in self.calibration.keys():
-                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=None, maximum=15000, tare=True)
+                    force = apply_calibration(self.raw['Sensor1'].values, self.calibration['Sensor1'], minimum=200, maximum=15000, tare=True)
 
             self._force = pd.DataFrame({'force': force, 'depth': self.depth.values})
             self._force = self._force.iloc[self.surface.force.index:self.end].reset_index()
@@ -310,6 +310,10 @@ class GenericProfileV6:
 
         return self._has_upward_motion
 
+    @cached_property
+    def hit_ground(self):
+        """Bool indicating if a ground strike was detected"""
+        return self.ground.time is not None
 
 class LyteProfileV6(GenericProfileV6):
     """
@@ -325,7 +329,6 @@ class LyteProfileV6(GenericProfileV6):
         self._motion_detect_name = None  # column name containing accel data dir of travel
         self._acceleration_names = None  # All columns containing accel data
         self._moving_time = None  # time the probe was moving
-        self._angle = None
 
     @staticmethod
     def process_df(df):
@@ -366,7 +369,7 @@ class LyteProfileV6(GenericProfileV6):
         if self._acceleration is None:
             if self.motion_detect_name != Sensor.UNAVAILABLE:
                 # Remove gravity
-                self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='backward')
+                self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='forward')
 
             else:
                 self._acceleration = Sensor.UNAVAILABLE
@@ -609,7 +612,7 @@ class LyteProfileV6(GenericProfileV6):
         Find a column containing acceleration data sometimes called
         acceleration or Y-Axis to handle variations in formatting of file
         """
-        candidates = [c for c in columns if c.lower() in ['acceleration', 'y-axis']]
+        candidates = [c for c in columns if c.lower() in ['y-axis', 'acceleration']]
         if candidates:
             return candidates[0]
         else:
@@ -643,10 +646,10 @@ class LyteProfileV6(GenericProfileV6):
         profile_string += msg.format('Resolution', f'{self.resolution:0.1f} pts/cm')
         profile_string += msg.format('Total Travel', f'{self.distance_traveled:0.1f} cm')
         profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
-        profile_string += msg.format('Ground Strike:', 'True' if self.ground.time is not None else 'False')
+        profile_string += msg.format('Ground Strike:', 'True' if self.hit_ground else 'False')
         profile_string += msg.format('Upward Motion:', "True" if self.has_upward_motion else "False")
         if self.angle != Sensor.UNAVAILABLE:
-            profile_string += msg.format('Angle:', int(self.angle))
+            profile_string += msg.format('Angle:', int(self.start_angle))
         profile_string += msg.format('Errors:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
 
         profile_string += '-' * (len(header)-2) + '\n'
@@ -689,20 +692,40 @@ class LyteProfileV6(GenericProfileV6):
 
         return avg
 
-    @property
+    @cached_property
     def angle(self):
+        """ Return the timeseries angle of the probe at the start of the measurement"""
+        angle = Sensor.UNAVAILABLE
+        if self.acceleration_names != Sensor.UNAVAILABLE:
+            if 'Y-Axis' in self.acceleration_names:
+                data = self.raw[self.acceleration_names].iloc[0:self.start.index + 1].mean(axis=0)
+                magn = data.pow(2).sum() ** 0.5
+                angle = np.arccos(abs(data['Y-Axis']) / magn) * 180 / np.pi
+        return angle
+
+    @cached_property
+    def start_angle(self):
         """
         float indicating the angle at the start of a measurement
         """
-        if self._angle is None and self.acceleration_names != Sensor.UNAVAILABLE:
-            if 'Y-Axis' in self.acceleration_names:
-                data = self.raw[self.acceleration_names].iloc[0:self.start.index + 1].mean(axis=0)
-                magn = data.pow(2).sum()**0.5
-                self._angle = np.arccos(abs(data['Y-Axis']) / magn) * 180 / np.pi
-            else:
-                self._angle = Sensor.UNAVAILABLE
+        if self.angle != Sensor.UNAVAILABLE:
+            start_angle = self.angle.iloc[0:self.start.index + 1].mean(axis=0)
+        else:
+            start_angle = Sensor.UNAVAILABLE
 
-        return self._angle
+        return start_angle
+
+    @cached_property
+    def end_angle(self):
+        """
+        float indicating the angle at the start of a measurement
+        """
+        if self.angle != Sensor.UNAVAILABLE:
+            end_angle = self.angle.iloc[self.stop.index:].mean(axis=0)
+        else:
+            end_angle = Sensor.UNAVAILABLE
+
+        return end_angle
 
     @classmethod
     def get_error(cls, acc, acc_range, threshold=0.95):
