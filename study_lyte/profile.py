@@ -406,7 +406,7 @@ class LyteProfileV6(GenericProfileV6):
             else:
                 idx = self.start.index
 
-            angle = None if self.angle == Sensor.UNAVAILABLE else self.angle
+            angle = self.start_angle if self.has_multi_axis_acceleration else None
             self._barometer = BarometerDepth(baro, idx, self.stop.index, angle=angle)
 
         return self._barometer
@@ -648,8 +648,10 @@ class LyteProfileV6(GenericProfileV6):
         profile_string += msg.format('Snow Depth', f'{self.distance_through_snow:0.1f} cm')
         profile_string += msg.format('Ground Strike:', 'True' if self.hit_ground else 'False')
         profile_string += msg.format('Upward Motion:', "True" if self.has_upward_motion else "False")
-        if self.angle != Sensor.UNAVAILABLE:
-            profile_string += msg.format('Angle:', int(self.start_angle))
+        if self.accelerometer != Sensor.UNAVAILABLE:
+            profile_string += msg.format(f'Starting Angle', self.start_angle)
+            profile_string += msg.format(f'Ending Angle',  self.end_angle)
+
         profile_string += msg.format('Errors:', f'@ {self.error.time:0.1f} s' if self.error.time is not None else 'None')
 
         profile_string += '-' * (len(header)-2) + '\n'
@@ -693,14 +695,18 @@ class LyteProfileV6(GenericProfileV6):
         return avg
 
     @cached_property
+    def has_multi_axis_acceleration(self):
+        """ Bool indicating if multiple axis of acceleration data is available"""
+        return self.acceleration_names != Sensor.UNAVAILABLE and self.motion_detect_name == 'Y-Axis'
+
+    @cached_property
     def angle(self):
         """ Return the timeseries angle of the probe at the start of the measurement"""
         angle = Sensor.UNAVAILABLE
-        if self.acceleration_names != Sensor.UNAVAILABLE:
+        if self.has_multi_axis_acceleration:
             if 'Y-Axis' in self.acceleration_names:
-                data = self.raw[self.acceleration_names].iloc[0:self.start.index + 1].mean(axis=0)
-                magn = data.pow(2).sum() ** 0.5
-                angle = np.arccos(abs(data['Y-Axis']) / magn) * 180 / np.pi
+                magn = self.raw[self.acceleration_names].pow(2).sum(axis=1) ** 0.5
+                angle = np.arccos(abs(self.raw[self.acceleration_names]['Y-Axis']) / magn) * 180 / np.pi
         return angle
 
     @cached_property
@@ -708,8 +714,8 @@ class LyteProfileV6(GenericProfileV6):
         """
         float indicating the angle at the start of a measurement
         """
-        if self.angle != Sensor.UNAVAILABLE:
-            start_angle = self.angle.iloc[0:self.start.index + 1].mean(axis=0)
+        if self.has_multi_axis_acceleration:
+            start_angle = int(self.angle.iloc[0:self.start.index + 1].mean(axis=0))
         else:
             start_angle = Sensor.UNAVAILABLE
 
@@ -720,8 +726,8 @@ class LyteProfileV6(GenericProfileV6):
         """
         float indicating the angle at the start of a measurement
         """
-        if self.angle != Sensor.UNAVAILABLE:
-            end_angle = self.angle.iloc[self.stop.index:].mean(axis=0)
+        if self.has_multi_axis_acceleration:
+            end_angle = int(self.angle.iloc[self.stop.index:].mean(axis=0))
         else:
             end_angle = Sensor.UNAVAILABLE
 

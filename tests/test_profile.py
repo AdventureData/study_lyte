@@ -98,8 +98,19 @@ class TestLyteProfile:
         ('toolik.csv', 'fused', 2),
         ('kaslo.csv', 'fused', Sensor.UNAVAILABLE)
     ])
-    def test_angle_attribute(self, profile, filename, depth_method, expected):
-        assert pytest.approx(profile.angle, abs=2) == expected
+    def test_start_angle_attribute(self, profile, filename, depth_method, expected):
+        assert pytest.approx(profile.start_angle, abs=2) == expected
+
+    @pytest.mark.parametrize('filename, depth_method, expected', [
+        # Serious angle
+        ('angled_measurement.csv', 'fused', 31),
+        # Near vertical
+        ('toolik.csv', 'fused', 10),
+        ('kaslo.csv', 'fused', Sensor.UNAVAILABLE)
+    ])
+    def test_end_angle_attribute(self, profile, filename, depth_method, expected):
+        assert pytest.approx(profile.end_angle, abs=2) == expected
+
 
     @pytest.mark.parametrize('columns, expected', [
         # Test old naming of accelerometer
