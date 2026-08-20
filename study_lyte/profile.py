@@ -368,8 +368,17 @@ class LyteProfileV6(GenericProfileV6):
         # Assign the detection column if it is available
         if self._acceleration is None:
             if self.motion_detect_name != Sensor.UNAVAILABLE:
-                # Remove gravity
-                self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction='forward')
+                # Which direction it compute gravity
+                if abs(self.start_angle - self.end_angle) < 10:
+                    method = 'forward'
+                elif self.start_angle < 10:
+                    method = 'forward'
+                elif self.end_angle < 10:
+                    method = 'backward'
+                else:
+                    method = 'forward'
+
+                self._acceleration = get_neutral_bias_at_border(self.raw[self.motion_detect_name], direction=method)
 
             else:
                 self._acceleration = Sensor.UNAVAILABLE
@@ -707,28 +716,28 @@ class LyteProfileV6(GenericProfileV6):
             if 'Y-Axis' in self.acceleration_names:
                 magn = self.raw[self.acceleration_names].pow(2).sum(axis=1) ** 0.5
                 angle = np.arccos(abs(self.raw[self.acceleration_names]['Y-Axis']) / magn) * 180 / np.pi
-                angle = pd.Series(angle.values, index=self.raw['time'])
+                angle = pd.Series(angle.values.astype(int), index=self.raw['time'])
         return angle
 
     @cached_property
-    def start_angle(self):
+    def start_angle(self) -> int | Sensor:
         """
         float indicating the angle at the start of a measurement
         """
         if self.has_multi_axis_acceleration:
-            start_angle = int(self.angle.iloc[0:self.start.index + 1].mean(axis=0))
+            start_angle = self.angle.iloc[0]
         else:
             start_angle = Sensor.UNAVAILABLE
 
         return start_angle
 
     @cached_property
-    def end_angle(self):
+    def end_angle(self) -> int | Sensor:
         """
         float indicating the angle at the start of a measurement
         """
         if self.has_multi_axis_acceleration:
-            end_angle = int(self.angle.iloc[self.stop.index:].mean(axis=0))
+            end_angle = self.angle.iloc[-1]
         else:
             end_angle = Sensor.UNAVAILABLE
 

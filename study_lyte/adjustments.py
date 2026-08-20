@@ -1,5 +1,8 @@
 import numpy as np
 import pandas as pd
+import logging
+
+LOG = logging.getLogger(__name__)
 
 def get_points_from_fraction(n_samples, fraction, maximum=None):
     """
@@ -47,6 +50,7 @@ def get_neutral_bias_at_border(series: pd.Series, fractional_basis: float = 0.00
     """
     arr = series.values if hasattr(series,'values') else series
     bias = get_directional_mean(arr, fractional_basis=fractional_basis, direction=direction)
+    LOG.info(f"Bias calculated at border: {bias:0.3f}")
     bias_adj = series - bias
     return bias_adj
 
@@ -183,11 +187,7 @@ def apply_calibration(series, coefficients, minimum=None, maximum=None, tare=Fal
     result = poly(series)
     if tare:
         result = result - np.nanmedian(result[0:50])
-
-    if maximum is not None:
-        result[result > maximum] = maximum
-    if minimum is not None:
-        result[result < minimum] = minimum
+    result = np.clip(result, min=minimum, max=maximum)
     return result
 
 
@@ -326,3 +326,22 @@ def zfilter(series, fraction):
     # Backward filtering
     filtered = np.convolve(filtered[::-1], filter_coefficients, mode='same')[::-1]
     return filtered
+
+
+def detect_stationary_periods(acceleration: pd.Series, threshold: float = 0.05,
+                              min_samples: int = 10) -> np.ndarray:
+    """
+    Detect stationary periods where acceleration variance is low.
+
+    Args:
+        acceleration: Acceleration time series (gravity removed)
+        threshold: Variance threshold to consider stationary
+        min_samples: Minimum consecutive samples to qualify as stationary
+
+    Returns:
+        Boolean array indicating stationary periods
+    """
+    # Rolling variance to detect low-activity periods
+    rolling_var = acceleration.rolling(window=min_samples, center=True).var()
+    stationary = (rolling_var < threshold).fillna(False).values
+    return stationary
