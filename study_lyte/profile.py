@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 from functools import cached_property
-from . io import read_data, find_metadata
+from . io import read_data, find_metadata, find_measurement_id
 from .adjustments import get_neutral_bias_at_border, remove_ambient, apply_calibration, get_points_from_fraction, zfilter
 from .detect import get_acceleration_start, get_acceleration_stop, get_nir_surface, get_nir_stop, get_sensor_start, get_ground_strike
 from .depth import AccelerometerDepth, BarometerDepth
@@ -56,6 +56,7 @@ class GenericProfileV6:
         self._meta = None
         self._point = None
         self._serial_number = None
+        self._measurement_id = None
         self._calibration = calibration or None
         self.header_position = None
 
@@ -87,6 +88,21 @@ class GenericProfileV6:
         for event in [self._start, self._stop]:
             event.depth = depth.iloc[event.index]
         self._surface = self.assign_surface_depths(depth)
+
+    @property
+    def measurement_id(self):
+        """
+        The measurement's own identifier, or None for a file written before
+        the key existed.
+
+        Unlike serial_number this does not fall back to a placeholder. An
+        absent id is a fact worth acting on — it is what tells a sync client
+        the file needs one minting and writing back — whereas an invented
+        value would look real and would differ on every read.
+        """
+        if self._measurement_id is None:
+            self._measurement_id = find_measurement_id(self.metadata)
+        return self._measurement_id
 
     @property
     def serial_number(self):
