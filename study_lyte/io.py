@@ -1,7 +1,59 @@
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
+import uuid
 import pandas as pd
 import numpy as np
+
+# Header key a measurement's own identifier is written under.
+#
+# Until this existed the only way to name a measurement was the pair
+# (Serial Num., RECORDED), which collides when two are taken inside the same
+# second and carries no timezone. The id is generated once, at capture, and
+# travels inside the file, so the same measurement stays recognisable wherever
+# it ends up: re-exported, backed up to the cloud, or pulled onto a different
+# machine.
+#
+# Shared deliberately. radicl writes it, the apps write it, and the sync API
+# keys on it, so it should be spelled in exactly one place.
+MEASUREMENT_ID_KEY = 'MEASUREMENT ID'
+
+
+def new_measurement_id() -> str:
+    """
+    A fresh identifier for a measurement.
+
+    Returns:
+        str: A uuid4 in the usual hyphenated form
+    """
+    return str(uuid.uuid4())
+
+
+def find_measurement_id(metadata: dict) -> Optional[str]:
+    """
+    The measurement id from a parsed header, if it carries one.
+
+    Matched loosely on the key, since three clients write these files
+    independently and an underscore or a different case should not lose the
+    id. Files written before the key existed simply have none, which is why
+    this returns None rather than inventing one — a caller that needs an id
+    for such a file should mint it once and write it back, not derive a fresh
+    one on every read.
+
+    Args:
+        metadata: Header dictionary, as returned by find_metadata
+
+    Returns:
+        str: The id, or None when the header does not carry one
+    """
+    wanted = MEASUREMENT_ID_KEY.replace(' ', '')
+
+    for key, value in metadata.items():
+        if str(key).strip().upper().replace('_', '').replace(' ', '') == wanted:
+            value = str(value).strip()
+
+            return value or None
+
+    return None
 
 def find_metadata(f:str) -> [int, dict]:
     """Read just the metadata from the probe files"""

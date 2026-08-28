@@ -3,6 +3,9 @@ from os.path import join
 from pathlib import Path
 from study_lyte.calibrations import Calibrations
 from study_lyte.profile import ProcessedProfileV6, LyteProfileV6, Sensor, GISPoint
+from study_lyte.io import (MEASUREMENT_ID_KEY, new_measurement_id, read_csv,
+                           write_csv)
+from pathlib import Path
 from operator import attrgetter
 
 
@@ -287,3 +290,48 @@ def test_app(data_dir):
     fname = data_dir + '/ls_app.csv'
     profile = ProcessedProfileV6(fname)
     assert False # TODO: Add more detailed checking
+
+
+class TestMeasurementId:
+    """
+    A profile should surface its own id, and should be honest when it has none.
+    """
+
+    def test_reads_the_id_out_of_the_header(self, tmp_path, data_dir):
+        """Written into a real file, then read back through the profile."""
+        value = new_measurement_id()
+        source = Path(data_dir) / 'kaslo.csv'
+        out = tmp_path / 'kaslo_with_id.csv'
+
+        df, meta = read_csv(str(source))
+        meta[MEASUREMENT_ID_KEY] = value
+        write_csv(df, meta, str(out))
+
+        profile = LyteProfileV6(str(out), calibration={'Sensor1': [-1, 4096]})
+
+        assert profile.measurement_id == value
+
+    def test_older_files_report_none_rather_than_inventing_one(self, data_dir):
+        """
+        Every file captured before the key existed lands here. Returning None
+        is what lets a sync client tell "needs an id minting and writing back"
+        apart from "already has one", which a generated value would hide.
+        """
+        profile = LyteProfileV6(join(data_dir, 'kaslo.csv'),
+                                calibration={'Sensor1': [-1, 4096]})
+
+        assert profile.measurement_id is None
+
+    def test_is_stable_across_reads(self, tmp_path, data_dir):
+        """Two reads of one file must not disagree about what it is called."""
+        value = new_measurement_id()
+        out = tmp_path / 'stable.csv'
+
+        df, meta = read_csv(join(data_dir, 'kaslo.csv'))
+        meta[MEASUREMENT_ID_KEY] = value
+        write_csv(df, meta, str(out))
+
+        first = LyteProfileV6(str(out), calibration={'Sensor1': [-1, 4096]})
+        second = LyteProfileV6(str(out), calibration={'Sensor1': [-1, 4096]})
+
+        assert first.measurement_id == second.measurement_id == value
